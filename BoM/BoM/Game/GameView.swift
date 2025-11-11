@@ -16,18 +16,22 @@ struct GameView: View {
         GridItem(.flexible(), spacing: 12)
     ]
     
+    private var fixedRows: Int {
+        model.fixedRows
+    }
+    
     init() { }
     
     var body: some View {
         GeometryReader { geo in
             let availableHeight = geo.size.height - (model.verticalPadding * 2)
             let rowHeight = max(
-                (availableHeight - (CGFloat(model.rowsCount - 1) * model.spacing)) / CGFloat(max(model.rowsCount, 1)),
+                (availableHeight - (CGFloat(fixedRows - 1) * model.spacing)) / CGFloat(max(fixedRows, 1)),
                 0
             )
             
             LazyVGrid(columns: columns, alignment: .center, spacing: model.spacing) {
-                ForEach(0..<model.rowsCount, id: \.self) { row in
+                ForEach(0..<fixedRows, id: \.self) { row in
                     makeLeftCard(row: row, rowHeight: rowHeight)
                     makeRightCard(row: row, rowHeight: rowHeight)
                 }
@@ -53,34 +57,63 @@ struct GameView: View {
     
     @ViewBuilder
     private func makeLeftCard(row: Int, rowHeight: CGFloat) -> some View {
-        let title = model.roundItems.indices.contains(row) ? model.roundItems[row].question : ""
-        let isSelected = model.isLeftSelected(row)
-        CardView(
-            title: title,
-            isSelected: isSelected,
-            selectionColor: model.selectionColor(isSelected: isSelected)
-        )
-        .frame(height: rowHeight)
-        .contentShape(Rectangle())
-        .onTapGesture { model.toggleLeftSelection(row) }
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityHint(Text("Left"))
+        if model.roundItems.indices.contains(row) {
+            let title = model.roundItems[row].question
+            let isSelected = model.isLeftSelected(row)
+            CardView(
+                title: title,
+                isSelected: isSelected,
+                selectionColor: model.selectionColor(isSelected: isSelected)
+            )
+            .frame(height: rowHeight)
+            .contentShape(Rectangle())
+            .onTapGesture { model.toggleLeftSelection(row) }
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+            .accessibilityHint(Text("Left"))
+        } else {
+            placeholderCard()
+                .frame(height: rowHeight)
+                .accessibilityHidden(true)
+        }
     }
     
     @ViewBuilder
     private func makeRightCard(row: Int, rowHeight: CGFloat) -> some View {
-        let title = model.rightItems.indices.contains(row) ? model.rightItems[row].answer : ""
-        let isSelected = model.isRightSelected(row)
-        CardView(
-            title: title,
-            isSelected: isSelected,
-            selectionColor: model.selectionColor(isSelected: isSelected)
-        )
-        .frame(height: rowHeight)
-        .contentShape(Rectangle())
-        .onTapGesture { model.toggleRightSelection(row) }
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityHint(Text("Right"))
+        if model.rightItems.indices.contains(row) {
+            let title = model.rightItems[row].answer
+            let isSelected = model.isRightSelected(row)
+            CardView(
+                title: title,
+                isSelected: isSelected,
+                selectionColor: model.selectionColor(isSelected: isSelected)
+            )
+            .frame(height: rowHeight)
+            .contentShape(Rectangle())
+            .onTapGesture { model.toggleRightSelection(row) }
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+            .accessibilityHint(Text("Right"))
+        } else {
+            placeholderCard()
+                .frame(height: rowHeight)
+                .accessibilityHidden(true)
+        }
+    }
+    
+    // MARK: - Placeholder
+    
+    private func placeholderCard() -> some View {
+        // Looks like a card but empty and non-interactive
+        Rectangle()
+            .fill(Color.blue.opacity(0.08))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.blue.opacity(0.3), lineWidth: 2)
+            )
+            .cornerRadius(12)
+            .overlay(
+                Text("") // no title
+            )
+            .allowsHitTesting(false)
     }
 }
 

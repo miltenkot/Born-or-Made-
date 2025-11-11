@@ -15,6 +15,8 @@ final class GameViewModel {
     let horizontalPadding: CGFloat = 16
     let verticalPadding: CGFloat = 16
     let maxVisibleRows: Int = 5
+    // Fixed number of rows in the grid (5 rows x 2 columns = 10 slots)
+    let fixedRows: Int = 5
     
     // Source data (eventually may come from a service)
     let qaItems: [QAItem] = [
