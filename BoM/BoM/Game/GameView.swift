@@ -42,74 +42,80 @@ struct GameView: View {
     
     // MARK: - Card builders
     
-    @ViewBuilder
     private func makeLeftCard(row: Int, rowHeight: CGFloat) -> some View {
-        if model.leftItems.indices.contains(row), let item = model.leftItems[row] {
-            let title = item.question
-            let isSelected = model.isLeftSelected(row)
-            let isFrozen = model.isLeftFrozen(row)
-            let isMismatch = model.isLeftMismatch(row)
-            CardView(
-                title: title,
-                isSelected: isSelected,
-                selectionColor: model.selectionColor(isSelected: isSelected, isMismatch: isMismatch),
-                selectionBackgroundColor: model.selectionBackgroundColor(isSelected: isSelected, isMismatch: isMismatch)
-            )
-            .frame(height: rowHeight)
-            .opacity(isFrozen ? 0.6 : 1.0)
-            .contentShape(.rect)
-            .onTapGesture {
-                guard !isFrozen else { return }
-                model.toggleLeftSelection(row)
-                if model.selectedLeftIndex != nil, model.selectedRightIndex != nil {
-                    Task {
-                        await model.confirmSelectionIfMatching()
-                    }
-                }
-            }
-            .disabled(isFrozen)
-            .accessibilityAddTraits(isSelected ? .isSelected : [])
-            .accessibilityHint(Text("Left"))
-        } else {
-            placeholder(rowHeight: rowHeight)
-        }
+        makeCard(
+            row: row,
+            rowHeight: rowHeight,
+            items: model.leftItems,
+            titleProvider: { $0.question },
+            isSelected: model.isLeftSelected,
+            isFrozen: model.isLeftFrozen,
+            isMismatch: model.isLeftMismatch,
+            toggleSelection: model.toggleLeftSelection,
+            accessibilityHint: "Left"
+        )
     }
     
-    @ViewBuilder
     private func makeRightCard(row: Int, rowHeight: CGFloat) -> some View {
-        if model.rightItems.indices.contains(row), let item = model.rightItems[row] {
-            let title = item.answer
-            let isSelected = model.isRightSelected(row)
-            let isFrozen = model.isRightFrozen(row)
-            let isMismatch = model.isRightMismatch(row)
+        makeCard(
+            row: row,
+            rowHeight: rowHeight,
+            items: model.rightItems,
+            titleProvider: { $0.answer },
+            isSelected: model.isRightSelected,
+            isFrozen: model.isRightFrozen,
+            isMismatch: model.isRightMismatch,
+            toggleSelection: model.toggleRightSelection,
+            accessibilityHint: "Right"
+        )
+    }
+    
+    
+    @ViewBuilder
+    private func makeCard<Item>(
+        row: Int,
+        rowHeight: CGFloat,
+        items: [Item?],
+        titleProvider: (Item) -> String,
+        isSelected: (Int) -> Bool,
+        isFrozen: (Int) -> Bool,
+        isMismatch: (Int) -> Bool,
+        toggleSelection: @escaping (Int) -> Void,
+        accessibilityHint: String
+    ) -> some View {
+        if items.indices.contains(row), let item = items[row] {
+            let title = titleProvider(item)
+            let selected = isSelected(row)
+            let frozen = isFrozen(row)
+            let mismatch = isMismatch(row)
+            
             CardView(
                 title: title,
-                isSelected: isSelected,
-                selectionColor: model.selectionColor(isSelected: isSelected, isMismatch: isMismatch),
-                selectionBackgroundColor: model.selectionBackgroundColor(isSelected: isSelected, isMismatch: isMismatch)
+                isSelected: selected,
+                selectionColor: model.selectionColor(isSelected: selected, isMismatch: mismatch),
+                selectionBackgroundColor: model.selectionBackgroundColor(isSelected: selected, isMismatch: mismatch),
+                accessibilityHint: accessibilityHint
             )
             .frame(height: rowHeight)
-            .opacity(isFrozen ? 0.6 : 1.0)
+            .opacity(frozen ? 0.6 : 1.0)
             .contentShape(.rect)
             .onTapGesture {
-                guard !isFrozen else { return }
-                model.toggleRightSelection(row)
+                guard !frozen else { return }
+                toggleSelection(row)
                 if model.selectedLeftIndex != nil, model.selectedRightIndex != nil {
                     Task {
                         await model.confirmSelectionIfMatching()
                     }
                 }
             }
-            .disabled(isFrozen)
-            .accessibilityAddTraits(isSelected ? .isSelected : [])
-            .accessibilityHint(Text("Right"))
+            .disabled(frozen)
         } else {
             placeholder(rowHeight: rowHeight)
         }
     }
     
     // MARK: - Placeholder
-
+    
     @ViewBuilder
     private func placeholder(rowHeight: CGFloat) -> some View {
         Rectangle()

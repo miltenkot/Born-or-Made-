@@ -12,6 +12,7 @@ struct CardView: View {
     var isSelected: Bool = false
     var selectionColor: Color = .blue
     var selectionBackgroundColor: Color = Color.blue.opacity(0.2)
+    var accessibilityHint: String = ""
     
     var body: some View {
         Rectangle()
@@ -29,6 +30,7 @@ struct CardView: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text(title))
             .accessibilityAddTraits(isSelected ? .isSelected : [])
+            .accessibilityHint(Text(accessibilityHint))
     }
 }
 
