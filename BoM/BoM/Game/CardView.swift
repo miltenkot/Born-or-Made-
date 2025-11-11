@@ -19,6 +19,7 @@ struct CardView: View {
                 Text(title)
                     .font(.headline)
                     .foregroundStyle(.blue)
+                    .padding(.horizontal)
             )
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text(title))
