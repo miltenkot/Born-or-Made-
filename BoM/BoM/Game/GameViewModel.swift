@@ -53,11 +53,11 @@ final class GameViewModel {
     var selectedLeftIndex: Int? = nil
     var selectedRightIndex: Int? = nil
     
-    // Frozen indices to disable taps temporarily (match animation lub kara za błąd)
+    // Frozen indices to temporarily disable taps (used for match animation or mismatch penalty)
     private(set) var frozenLeft: Set<Int> = []
     private(set) var frozenRight: Set<Int> = []
     
-    // Indices to highlight mismatch with red border
+    // Indices to highlight a mismatch with a red border
     private(set) var mismatchLeftIndex: Int? = nil
     private(set) var mismatchRightIndex: Int? = nil
     
@@ -113,7 +113,7 @@ final class GameViewModel {
         frozenRight.contains(row)
     }
     
-    // Whether a given row should show mismatch (red) state
+    // Whether a given row should show a mismatch (red) state
     func isLeftMismatch(_ row: Int) -> Bool {
         mismatchLeftIndex == row
     }
@@ -123,13 +123,13 @@ final class GameViewModel {
     }
     
     func selectionColor(isSelected: Bool, isMismatch: Bool = false) -> Color {
-        // Jeśli to mismatch, kolor obramowania ma być czerwony niezależnie od selekcji
+        // If mismatch, show a red border regardless of selection
         if isMismatch { return .red }
         return (isSelected && isCurrentSelectionMatching) ? .green : .blue
     }
     
     func selectionBackgroundColor(isSelected: Bool, isMismatch: Bool = false) -> Color {
-        // Jeśli mismatch, pokaż czerwone tło-aurę
+        // If mismatch, show a red background aura
         if isMismatch { return Color.red.opacity(0.15) }
         guard isSelected else { return Color.blue.opacity(0.2) }
         return isCurrentSelectionMatching
@@ -147,7 +147,7 @@ final class GameViewModel {
         selectedRightIndex = (selectedRightIndex == row) ? nil : row
     }
     
-    // Call after both sides are selected to handle match and refill with delays and animations
+    // Call after both sides are selected to handle match, mismatch, and refilling with delays and animations
     func confirmSelectionIfMatching() async {
         guard
             let li = selectedLeftIndex,
@@ -158,19 +158,19 @@ final class GameViewModel {
             let rightItem = rightItems[ri]
         else { return }
         
-        // Nietrafione dopasowanie: pokaż czerwone obramowanie i zamróź tylko te dwa pola na 2 sekundy
+        // Mismatch: show red border and freeze only these two cells for 2 seconds
         guard leftItem.id == rightItem.id else {
-            // Zaznacz błąd i zamroź te dwa sloty
+            // Mark mismatch and freeze the two slots
             mismatchLeftIndex = li
             mismatchRightIndex = ri
             frozenLeft.insert(li)
             frozenRight.insert(ri)
-            // Natychmiast wyczyść selekcje - bordery i tak będą widoczne dzięki mismatch*
+            // Immediately clear selections — borders remain visible thanks to mismatch flags
             selectedLeftIndex = nil
             selectedRightIndex = nil
-            // odczekaj 2 sekundy
+            // Wait 2 seconds
             try? await Task.sleep(nanoseconds: 2_000_000_000)
-            // odblokuj i wyczyść stany błędu
+            // Unfreeze and clear mismatch state
             frozenLeft.remove(li)
             frozenRight.remove(ri)
             mismatchLeftIndex = nil
@@ -178,11 +178,11 @@ final class GameViewModel {
             return
         }
         
-        // Trafione dopasowanie: klasyczna animacja i uzupełnianie
+        // Match: perform animation and refill
         frozenLeft.insert(li)
         frozenRight.insert(ri)
         
-        // Clear selection immediately so UI nie sugeruje kolejnych akcji
+        // Clear selection immediately so the UI doesn't suggest further actions
         selectedLeftIndex = nil
         selectedRightIndex = nil
         
@@ -214,7 +214,7 @@ final class GameViewModel {
             }
         }
         
-        // Rebuild right side permutation to reflect current left, preserving stability where possible
+        // Rebuild right column permutation to reflect current left, preserving stability where possible
         withAnimation(.easeInOut) {
             rebuildRightPreservingStableSlots()
         }
