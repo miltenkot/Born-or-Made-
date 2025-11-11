@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		2AA4D4902EC334A10079FEB5 /* TestPlan.xctestplan in Resources */ = {isa = PBXBuildFile; fileRef = 2AA4D48F2EC334A10079FEB5 /* TestPlan.xctestplan */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		2AA4D4672EC318ED0079FEB5 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +31,7 @@
 		2AA4D4592EC318EB0079FEB5 /* BoM.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoM.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2AA4D4662EC318ED0079FEB5 /* BoMTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BoMTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2AA4D4702EC318ED0079FEB5 /* BoMUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BoMUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		2AA4D48F2EC334A10079FEB5 /* TestPlan.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = TestPlan.xctestplan; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -75,6 +80,7 @@
 		2AA4D4502EC318EB0079FEB5 = {
 			isa = PBXGroup;
 			children = (
+				2AA4D48F2EC334A10079FEB5 /* TestPlan.xctestplan */,
 				2AA4D45B2EC318EB0079FEB5 /* BoM */,
 				2AA4D4692EC318ED0079FEB5 /* BoMTests */,
 				2AA4D4732EC318ED0079FEB5 /* BoMUITests */,
@@ -212,6 +218,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2AA4D4902EC334A10079FEB5 /* TestPlan.xctestplan in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

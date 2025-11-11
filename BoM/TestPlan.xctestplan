@@ -1,0 +1,25 @@
+{
+  "configurations" : [
+    {
+      "id" : "4B9F7920-F3B0-4CD0-BF1F-6B9A89C11490",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : false,
+      "target" : {
+        "containerPath" : "container:BoM.xcodeproj",
+        "identifier" : "2AA4D4652EC318ED0079FEB5",
+        "name" : "BoMTests"
+      }
+    }
+  ],
+  "version" : 1
+}
