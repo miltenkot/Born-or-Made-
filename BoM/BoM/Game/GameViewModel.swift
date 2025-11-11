@@ -19,7 +19,7 @@ final class GameViewModel {
     // Fixed number of rows in the grid (5 rows x 2 columns = 10 slots)
     let fixedRows: Int = 5
     
-    // Source data (eventually may come from a service)
+    // Source data
     let qaItems: [QAItem] = [
         QAItem(question: "Stolica Francji", answer: "Paryż"),
         QAItem(question: "2 + 2", answer: "4"),
@@ -43,7 +43,6 @@ final class GameViewModel {
         QAItem(question: "Stolica Portugalii", answer: "Lizbona")
     ]
 
-    
     // Game state
     var roundItems: [QAItem?] = []
     var rightItems: [QAItem?] = []
@@ -53,6 +52,10 @@ final class GameViewModel {
     
     var selectedLeftIndex: Int? = nil
     var selectedRightIndex: Int? = nil
+    
+    // Newly added: frozen indices to disable taps temporarily
+    private(set) var frozenLeft: Set<Int> = []
+    private(set) var frozenRight: Set<Int> = []
     
     // Computed properties
     var rowsCount: Int { min(qaItems.count, maxVisibleRows) }
@@ -71,26 +74,21 @@ final class GameViewModel {
     
     // API
     func setupRound() {
-        // Start a new pool
         remainingItems = qaItems.shuffled()
-        
-        // Prepare columns with fixed size = fixedRows
         roundItems = Array(repeating: nil, count: fixedRows)
         rightItems = Array(repeating: nil, count: fixedRows)
         
-        // Fill initial round in first rowsCount slots
         for i in 0..<rowsCount {
             if let next = remainingItems.first {
                 roundItems[i] = next
                 remainingItems.removeFirst()
             }
         }
-        // Build initial right as a permutation of left, but placed into the same occupied slots,
-        // so layout is stable from the start.
         rebuildRightPreservingStableSlots()
-        
         selectedLeftIndex = nil
         selectedRightIndex = nil
+        frozenLeft.removeAll()
+        frozenRight.removeAll()
     }
     
     func isLeftSelected(_ row: Int) -> Bool {
@@ -101,11 +99,18 @@ final class GameViewModel {
         selectedRightIndex == row
     }
     
+    func isLeftFrozen(_ row: Int) -> Bool {
+        frozenLeft.contains(row)
+    }
+    
+    func isRightFrozen(_ row: Int) -> Bool {
+        frozenRight.contains(row)
+    }
+    
     func selectionColor(isSelected: Bool) -> Color {
         (isSelected && isCurrentSelectionMatching) ? .green : .blue
     }
     
-    // New: background color for selected state
     func selectionBackgroundColor(isSelected: Bool) -> Color {
         guard isSelected else { return Color.blue.opacity(0.2) }
         return isCurrentSelectionMatching
@@ -114,15 +119,17 @@ final class GameViewModel {
     }
     
     func toggleLeftSelection(_ row: Int) {
+        guard !isLeftFrozen(row) else { return }
         selectedLeftIndex = (selectedLeftIndex == row) ? nil : row
     }
     
     func toggleRightSelection(_ row: Int) {
+        guard !isRightFrozen(row) else { return }
         selectedRightIndex = (selectedRightIndex == row) ? nil : row
     }
     
-    // Call after both sides are selected to handle match and refill
-    func confirmSelectionIfMatching() {
+    // Call after both sides are selected to handle match and refill with delays and animations
+    func confirmSelectionIfMatching() async {
         guard
             let li = selectedLeftIndex,
             let ri = selectedRightIndex,
@@ -132,62 +139,77 @@ final class GameViewModel {
             let rightItem = rightItems[ri]
         else { return }
         
-        // Check by identity to avoid ambiguity on duplicate answers
+        // Check match by identity
         guard leftItem.id == rightItem.id else {
-            // Not a match, just keep selection logic as you like
             return
         }
         
-        // 1) Replace only the left slot with a new item (or nil if pool empty)
-        if !remainingItems.isEmpty {
-            roundItems[li] = remainingItems.removeFirst()
-        } else {
-            roundItems[li] = nil
-        }
+        // Freeze both cells to disable interactions
+        frozenLeft.insert(li)
+        frozenRight.insert(ri)
         
-        // 2) Rebuild right column as a permutation of current left,
-        //    preserving stable positions where possible.
-        rebuildRightPreservingStableSlots()
-        
-        // Clear selection after processing
+        // Clear selection immediately so UI nie sugeruje kolejnych akcji
         selectedLeftIndex = nil
         selectedRightIndex = nil
+        
+        // Random freeze duration: 1..3 seconds
+        let freezeSeconds = Double(Int.random(in: 1...3))
+        try? await Task.sleep(nanoseconds: UInt64(freezeSeconds * 1_000_000_000))
+        
+        // Remove matched items (both sides) with animation
+        withAnimation(.easeInOut) {
+            roundItems[li] = nil
+            rightItems[ri] = nil
+        }
+        
+        // Unfreeze both slots
+        frozenLeft.remove(li)
+        frozenRight.remove(ri)
+        
+        // After 1 second, insert new items in random empty slots (if any remain)
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        
+        // Collect empty indices on the left
+        let emptyLeftIndices = (0..<fixedRows).filter { roundItems[$0] == nil }
+        // Fill empty left slots with new items randomly
+        var shuffledEmptyLeft = emptyLeftIndices.shuffled()
+        while !remainingItems.isEmpty, !shuffledEmptyLeft.isEmpty {
+            let idx = shuffledEmptyLeft.removeFirst()
+            withAnimation(.spring) {
+                roundItems[idx] = remainingItems.removeFirst()
+            }
+        }
+        
+        // Rebuild right side permutation to reflect current left, preserving stability where possible
+        withAnimation(.easeInOut) {
+            rebuildRightPreservingStableSlots()
+        }
     }
     
     // MARK: - Right column rebuild preserving stable slots
     private func rebuildRightPreservingStableSlots() {
-        // Desired multiset = all non-nil items on the left
         let desired = roundItems.compactMap { $0 }
         var remainingToPlace = desired
         
-        // First pass: keep items that are still present and placed on the same index
-        // We try to preserve slots where the current right item is still in desired set.
         var newRight: [QAItem?] = Array(repeating: nil, count: fixedRows)
         for i in 0..<fixedRows {
             guard let leftAtI = roundItems[i] else {
-                // left is empty -> right must be empty
                 continue
             }
             if let currentRight = rightItems.indices.contains(i) ? rightItems[i] : nil,
                let idx = remainingToPlace.firstIndex(of: currentRight),
-               // ensure we don't accidentally reveal the pair by keeping right equal to left at same index
                currentRight.id != leftAtI.id {
                 newRight[i] = currentRight
                 remainingToPlace.remove(at: idx)
             }
         }
         
-        // Second pass: fill empty right slots that correspond to non-nil left slots
-        // with a random permutation from the remaining pool, avoiding same-index pair.
         remainingToPlace.shuffle()
         for i in 0..<fixedRows {
             guard newRight[i] == nil, let leftAtI = roundItems[i] else { continue }
-            // pick an element whose id != leftAtI.id if possible
             if let safeIdx = remainingToPlace.firstIndex(where: { $0.id != leftAtI.id }) {
                 newRight[i] = remainingToPlace.remove(at: safeIdx)
             } else {
-                // if only matching element remains (edge case with 1 item), place it anyway
-                // UI will still work; alternatively, leave nil if chcesz unikać pewnej pary.
                 newRight[i] = remainingToPlace.isEmpty ? nil : remainingToPlace.removeFirst()
             }
         }

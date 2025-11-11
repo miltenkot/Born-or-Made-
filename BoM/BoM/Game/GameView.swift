@@ -52,6 +52,7 @@ struct GameView: View {
         if model.roundItems.indices.contains(row), let item = model.roundItems[row] {
             let title = item.question
             let isSelected = model.isLeftSelected(row)
+            let isFrozen = model.isLeftFrozen(row)
             CardView(
                 title: title,
                 isSelected: isSelected,
@@ -59,14 +60,18 @@ struct GameView: View {
                 selectionBackgroundColor: model.selectionBackgroundColor(isSelected: isSelected)
             )
             .frame(height: rowHeight)
+            .opacity(isFrozen ? 0.6 : 1.0)
             .contentShape(Rectangle())
             .onTapGesture {
+                guard !isFrozen else { return }
                 model.toggleLeftSelection(row)
-                // If both sides are selected, attempt to confirm and refill
                 if model.selectedLeftIndex != nil, model.selectedRightIndex != nil {
-                    model.confirmSelectionIfMatching()
+                    Task {
+                        await model.confirmSelectionIfMatching()
+                    }
                 }
             }
+            .disabled(isFrozen)
             .accessibilityAddTraits(isSelected ? .isSelected : [])
             .accessibilityHint(Text("Left"))
         } else {
@@ -81,6 +86,7 @@ struct GameView: View {
         if model.rightItems.indices.contains(row), let item = model.rightItems[row] {
             let title = item.answer
             let isSelected = model.isRightSelected(row)
+            let isFrozen = model.isRightFrozen(row)
             CardView(
                 title: title,
                 isSelected: isSelected,
@@ -88,14 +94,18 @@ struct GameView: View {
                 selectionBackgroundColor: model.selectionBackgroundColor(isSelected: isSelected)
             )
             .frame(height: rowHeight)
+            .opacity(isFrozen ? 0.6 : 1.0)
             .contentShape(Rectangle())
             .onTapGesture {
+                guard !isFrozen else { return }
                 model.toggleRightSelection(row)
-                // If both sides are selected, attempt to confirm and refill
                 if model.selectedLeftIndex != nil, model.selectedRightIndex != nil {
-                    model.confirmSelectionIfMatching()
+                    Task {
+                        await model.confirmSelectionIfMatching()
+                    }
                 }
             }
+            .disabled(isFrozen)
             .accessibilityAddTraits(isSelected ? .isSelected : [])
             .accessibilityHint(Text("Right"))
         } else {
@@ -108,7 +118,6 @@ struct GameView: View {
     // MARK: - Placeholder
     
     private func placeholderCard() -> some View {
-        // Looks like a card but empty and non-interactive
         Rectangle()
             .fill(Color.blue.opacity(0.08))
             .overlay(
@@ -117,7 +126,7 @@ struct GameView: View {
             )
             .cornerRadius(12)
             .overlay(
-                Text("") // no title
+                Text("")
             )
             .allowsHitTesting(false)
     }
