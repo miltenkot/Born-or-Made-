@@ -49,8 +49,8 @@ struct GameView: View {
     
     @ViewBuilder
     private func makeLeftCard(row: Int, rowHeight: CGFloat) -> some View {
-        if model.roundItems.indices.contains(row) {
-            let title = model.roundItems[row].question
+        if model.roundItems.indices.contains(row), let item = model.roundItems[row] {
+            let title = item.question
             let isSelected = model.isLeftSelected(row)
             CardView(
                 title: title,
@@ -77,8 +77,8 @@ struct GameView: View {
     
     @ViewBuilder
     private func makeRightCard(row: Int, rowHeight: CGFloat) -> some View {
-        if model.rightItems.indices.contains(row) {
-            let title = model.rightItems[row].answer
+        if model.rightItems.indices.contains(row), let item = model.rightItems[row] {
+            let title = item.answer
             let isSelected = model.isRightSelected(row)
             CardView(
                 title: title,
