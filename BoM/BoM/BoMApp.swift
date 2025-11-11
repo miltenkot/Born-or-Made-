@@ -11,7 +11,7 @@ import SwiftUI
 struct BoMApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            GameView()
         }
     }
 }
