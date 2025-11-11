@@ -29,19 +29,8 @@ struct GameView: View {
             
             LazyVGrid(columns: columns, alignment: .center, spacing: spacing) {
                 ForEach(items, id: \.self) { index in
-                    Rectangle()
-                        .fill(Color.blue.opacity(0.2))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.blue, lineWidth: 2)
-                        )
-                        .cornerRadius(12)
+                    CardView(title: "Item \(index + 1)")
                         .frame(height: rowHeight)
-                        .overlay(
-                            Text("Item \(index + 1)")
-                                .font(.headline)
-                                .foregroundStyle(.blue)
-                        )
                 }
             }
             .padding(.horizontal, horizontalPadding)
