@@ -15,17 +15,33 @@ struct GameView: View {
     private let spacing: CGFloat = 12
     private let horizontalPadding: CGFloat = 16
     private let verticalPadding: CGFloat = 16
+    private let maxVisibleRows: Int = 5
     
     private let qaItems: [QAItem] = [
         QAItem(question: "Stolica Francji", answer: "Paryż"),
         QAItem(question: "2 + 2", answer: "4"),
         QAItem(question: "Kolor nieba", answer: "Niebieski"),
         QAItem(question: "Język projektu", answer: "Swift"),
-        QAItem(question: "Rok przestępny", answer: "366 dni")
+        QAItem(question: "Rok przestępny", answer: "366 dni"),
+        QAItem(question: "Stolica Niemiec", answer: "Berlin"),
+        QAItem(question: "3 * 3", answer: "9"),
+        QAItem(question: "Stolica Włoch", answer: "Rzym"),
+        QAItem(question: "Autor 'Pan Tadeusz'", answer: "Adam Mickiewicz"),
+        QAItem(question: "Pierwiastek z 16", answer: "4"),
+        QAItem(question: "Kolor trawy", answer: "Zielony"),
+        QAItem(question: "Język na iOS", answer: "Swift"),
+        QAItem(question: "Stolica Hiszpanii", answer: "Madryt"),
+        QAItem(question: "5 - 2", answer: "3"),
+        QAItem(question: "Stolica Polski", answer: "Warszawa"),
+        QAItem(question: "7 + 5", answer: "12"),
+        QAItem(question: "Kolor krwi", answer: "Czerwony"),
+        QAItem(question: "Miesiące w roku", answer: "12"),
+        QAItem(question: "Doba ma", answer: "24 godziny"),
+        QAItem(question: "Stolica Portugalii", answer: "Lizbona")
     ]
     
-    private var rowsCount: Int { qaItems.count }
-    private var leftItems: [QAItem] { qaItems }
+    private var rowsCount: Int { min(qaItems.count, maxVisibleRows) }
+    private var leftItems: [QAItem] { Array(qaItems.prefix(rowsCount)) }
     
     @State private var rightItems: [QAItem] = []
     @State private var selectedLeftIndex: Int? = nil
@@ -86,14 +102,14 @@ struct GameView: View {
             .padding(.vertical, verticalPadding)
         }
         .onAppear {
-            rightItems = qaItems.shuffled()
+            rightItems = Array(qaItems.shuffled().prefix(maxVisibleRows))
         }
         .ignoresSafeArea(.keyboard)
         .background(Color(.systemBackground))
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Shuffle") {
-                    rightItems = qaItems.shuffled()
+                    rightItems = Array(qaItems.shuffled().prefix(maxVisibleRows))
                     selectedRightIndex = nil
                 }
             }
@@ -104,4 +120,3 @@ struct GameView: View {
 #Preview {
     GameView()
 }
-
