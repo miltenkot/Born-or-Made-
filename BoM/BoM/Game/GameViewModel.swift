@@ -76,6 +76,9 @@ final class GameViewModel {
         return l.id == r.id
     }
     
+    // Global lock to prevent all interactions
+    private(set) var isInteractionLocked: Bool = false
+    
     // MARK: - Setup
     func setupRound() {
         roundID = UUID() // Cancel any in-flight async operations
@@ -130,12 +133,12 @@ final class GameViewModel {
     
     // Toggle selection
     func toggleLeftSelection(_ row: Int) {
-        guard !isLeftFrozen(row) else { return }
+        guard !isLeftFrozen(row), !isInteractionLocked else { return }
         selectedLeftIndex = (selectedLeftIndex == row) ? nil : row
     }
     
     func toggleRightSelection(_ row: Int) {
-        guard !isRightFrozen(row) else { return }
+        guard !isRightFrozen(row), !isInteractionLocked else { return }
         selectedRightIndex = (selectedRightIndex == row) ? nil : row
     }
     
@@ -156,19 +159,22 @@ final class GameViewModel {
         guard leftItem.id == rightItem.id else {
             mismatchLeftIndex = li
             mismatchRightIndex = ri
-            frozenLeft.insert(li)
-            frozenRight.insert(ri)
+            
+            // Lock all interactions
+            isInteractionLocked = true
+            
             selectedLeftIndex = nil
             selectedRightIndex = nil
             
             guard currentRound == roundID else { return }
             
-            frozenLeft.remove(li)
-            frozenRight.remove(ri)
-            withAnimation(.easeInOut(duration: 2)) {
-                mismatchLeftIndex = nil
-                mismatchRightIndex = nil
-            }
+            try? await Task.sleep(for: .seconds(1))
+            
+            guard currentRound == roundID else { return }
+            
+            mismatchLeftIndex = nil
+            mismatchRightIndex = nil
+            isInteractionLocked = false
             return
         }
         
@@ -180,7 +186,7 @@ final class GameViewModel {
         selectedLeftIndex = nil
         selectedRightIndex = nil
         
-        try? await Task.sleep(for: .seconds(1)) // Show green highlight
+        try? await Task.sleep(for: .seconds(1))
         guard currentRound == roundID else { return }
         
         let disappearDuration = Double(Int.random(in: 1...3))
@@ -191,7 +197,6 @@ final class GameViewModel {
         
         guard currentRound == roundID else { return }
         
-        // Refill left empty slots
         var emptyLeftIndices = (0..<maxVisibleRows).filter { leftItems[$0] == nil }
         emptyLeftIndices.shuffle()
         while !remainingItems.isEmpty, !emptyLeftIndices.isEmpty {
@@ -201,7 +206,6 @@ final class GameViewModel {
             }
         }
         
-        // Rebuild right side
         withAnimation(.easeInOut(duration: disappearDuration)) {
             rebuildRightPreservingStableSlots()
         }
