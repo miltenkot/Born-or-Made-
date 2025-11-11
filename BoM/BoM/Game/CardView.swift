@@ -1,10 +1,3 @@
-//
-//  CardView.swift
-//  BoM
-//
-//  Created by Bartlomiej Lanczyk on 11/11/2025.
-//
-
 import SwiftUI
 
 struct CardView: View {
@@ -17,11 +10,11 @@ struct CardView: View {
     var body: some View {
         Rectangle()
             .fill(selectionBackgroundColor)
+            .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? selectionColor : Color.blue, lineWidth: isSelected ? 4 : 2)
+                    .stroke(isSelected ? selectionColor : Color.blue, lineWidth: isSelected ? 3 : 2)
             )
-            .cornerRadius(12)
             .overlay(
                 Text(title)
                     .font(.headline)
@@ -38,11 +31,21 @@ struct CardView: View {
     VStack(spacing: 16) {
         CardView(title: "Not selected")
             .frame(height: 80)
-        CardView(title: "Selected non-matching", isSelected: true, selectionBackgroundColor: Color.blue.opacity(0.15))
-            .frame(height: 80)
-        CardView(title: "Selected matching", isSelected: true, selectionColor: .green, selectionBackgroundColor: Color.green.opacity(0.25))
-            .frame(height: 80)
+        
+        CardView(
+            title: "Selected non-matching",
+            isSelected: true,
+            selectionBackgroundColor: Color.blue.opacity(0.15)
+        )
+        .frame(height: 80)
+        
+        CardView(
+            title: "Selected matching",
+            isSelected: true,
+            selectionColor: .green,
+            selectionBackgroundColor: Color.green.opacity(0.25)
+        )
+        .frame(height: 80)
     }
     .padding()
 }
-

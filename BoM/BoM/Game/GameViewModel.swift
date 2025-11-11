@@ -1,15 +1,6 @@
-//
-//  GameViewModel.swift
-//  BoM
-//
-//  Created by Bartlomiej Lanczyk on 11/11/2025.
-//  Updated by ChatGPT (nate) - applied robustness & readability fixes.
-//
-
 import SwiftUI
 import Observation
 
-// NOTE: QAItem musi być zdefiniowany gdzie indziej w projekcie i mieć unikalne `id`.
 @MainActor
 @Observable
 final class GameViewModel {
@@ -21,54 +12,58 @@ final class GameViewModel {
     
     // Source data
     let qaItems: [QAItem] = [
-        QAItem(question: "Stolica Francji", answer: "Paryż"),
+        QAItem(question: "Capital of France", answer: "Paris"),
         QAItem(question: "1 + 1", answer: "2"),
-        QAItem(question: "Kolor nieba", answer: "Niebieski"),
-        QAItem(question: "Język używany do tworzenia aplikacji na iOS", answer: "Swift"),
-        QAItem(question: "Rok przestępny ma", answer: "366 dni"),
-        QAItem(question: "Stolica Niemiec", answer: "Berlin"),
+        QAItem(question: "Color of the sky", answer: "Blue"),
+        QAItem(question: "Programming language used for iOS apps", answer: "Swift"),
+        QAItem(question: "Leap year has", answer: "366 days"),
+        QAItem(question: "Capital of Germany", answer: "Berlin"),
         QAItem(question: "3 * 3", answer: "9"),
-        QAItem(question: "Stolica Włoch", answer: "Rzym"),
-        QAItem(question: "Autor 'Pana Tadeusza'", answer: "Adam Mickiewicz"),
-        QAItem(question: "Pierwiastek kwadratowy z 16", answer: "4"),
-        QAItem(question: "Kolor trawy", answer: "Zielony"),
-        QAItem(question: "System operacyjny Apple dla telefonów", answer: "iOS"),
-        QAItem(question: "Stolica Hiszpanii", answer: "Madryt"),
+        QAItem(question: "Capital of Italy", answer: "Rome"),
+        QAItem(question: "Author of 'Pan Tadeusz'", answer: "Adam Mickiewicz"),
+        QAItem(question: "Square root of 16", answer: "4"),
+        QAItem(question: "Color of grass", answer: "Green"),
+        QAItem(question: "Apple's mobile operating system", answer: "iOS"),
+        QAItem(question: "Capital of Spain", answer: "Madrid"),
         QAItem(question: "5 - 2", answer: "3"),
-        QAItem(question: "Stolica Polski", answer: "Warszawa"),
+        QAItem(question: "Capital of Poland", answer: "Warsaw"),
         QAItem(question: "71 + 5", answer: "76"),
-        QAItem(question: "Kolor krwi", answer: "Czerwony"),
-        QAItem(question: "Liczba miesięcy w roku", answer: "12"),
-        QAItem(question: "Doba ma", answer: "24 godziny"),
-        QAItem(question: "Stolica Portugalii", answer: "Lizbona")
+        QAItem(question: "Color of blood", answer: "Red"),
+        QAItem(question: "Number of months in a year", answer: "12"),
+        QAItem(question: "Hours in a day", answer: "24 hours"),
+        QAItem(question: "Capital of Portugal", answer: "Lisbon")
     ]
     
     // Game state
     var leftItems: [QAItem?] = []
     var rightItems: [QAItem?] = []
     
-    // Pool of remaining, not yet used items
+    // Remaining items pool for refilling
     private var remainingItems: [QAItem] = []
     
     var selectedLeftIndex: Int? = nil
     var selectedRightIndex: Int? = nil
     
-    // Per-slot freeze to disable taps on specific cells
+    // Frozen slots to prevent user taps
     private(set) var frozenLeft: Set<Int> = []
     private(set) var frozenRight: Set<Int> = []
     
-    // Indices to highlight a mismatch with a red border
+    // Indices to highlight mismatches (red border)
     private(set) var mismatchLeftIndex: Int? = nil
     private(set) var mismatchRightIndex: Int? = nil
     
-    // Round identifier to protect against race conditions when awaiting sleeps/animations
+    // Indices to highlight matches (green border)
+    private(set) var matchLeftIndex: Int? = nil
+    private(set) var matchRightIndex: Int? = nil
+    
+    // Round identifier to cancel async operations if round changes
     private var roundID = UUID()
     
     // Computed properties
     var visibleRowsCount: Int { min(qaItems.count, maxVisibleRows) }
+    var rowsCount: Int { visibleRowsCount }
     
-    var rowsCount: Int { visibleRowsCount } // backward-compatibility if używane gdzieś indziej
-    
+    // Check if current selection is a correct match
     var isCurrentSelectionMatching: Bool {
         guard
             let li = selectedLeftIndex,
@@ -81,11 +76,11 @@ final class GameViewModel {
         return l.id == r.id
     }
     
-    // API
+    // MARK: - Setup
     func setupRound() {
-        roundID = UUID() // bump round id to cancel in-flight async operations
+        roundID = UUID() // Cancel any in-flight async operations
         let shuffled = qaItems.shuffled()
-        // Fill left with first visibleRowsCount, remaining into remainingItems
+        
         leftItems = Array(repeating: nil, count: maxVisibleRows)
         rightItems = Array(repeating: nil, count: maxVisibleRows)
         
@@ -93,64 +88,47 @@ final class GameViewModel {
         for i in 0..<take {
             leftItems[i] = shuffled[i]
         }
-        if shuffled.count > take {
-            remainingItems = Array(shuffled.dropFirst(take))
-        } else {
-            remainingItems = []
-        }
+        remainingItems = shuffled.count > take ? Array(shuffled.dropFirst(take)) : []
         
         rebuildRightPreservingStableSlots()
+        
         selectedLeftIndex = nil
         selectedRightIndex = nil
         frozenLeft.removeAll()
         frozenRight.removeAll()
         mismatchLeftIndex = nil
         mismatchRightIndex = nil
+        matchLeftIndex = nil
+        matchRightIndex = nil
     }
     
-    func isLeftSelected(_ row: Int) -> Bool {
-        selectedLeftIndex == row
-    }
+    // MARK: - Selection helpers
+    func isLeftSelected(_ row: Int) -> Bool { selectedLeftIndex == row }
+    func isRightSelected(_ row: Int) -> Bool { selectedRightIndex == row }
+    func isLeftFrozen(_ row: Int) -> Bool { frozenLeft.contains(row) }
+    func isRightFrozen(_ row: Int) -> Bool { frozenRight.contains(row) }
+    func isLeftMismatch(_ row: Int) -> Bool { mismatchLeftIndex == row }
+    func isRightMismatch(_ row: Int) -> Bool { mismatchRightIndex == row }
+    func isLeftMatch(_ row: Int) -> Bool { matchLeftIndex == row }
+    func isRightMatch(_ row: Int) -> Bool { matchRightIndex == row }
     
-    func isRightSelected(_ row: Int) -> Bool {
-        selectedRightIndex == row
-    }
-    
-    func isLeftFrozen(_ row: Int) -> Bool {
-        frozenLeft.contains(row)
-    }
-    
-    func isRightFrozen(_ row: Int) -> Bool {
-        frozenRight.contains(row)
-    }
-    
-    // Whether a given row should show a mismatch (red) state
-    func isLeftMismatch(_ row: Int) -> Bool {
-        mismatchLeftIndex == row
-    }
-    
-    func isRightMismatch(_ row: Int) -> Bool {
-        mismatchRightIndex == row
-    }
-    
-    // New single source for selection colors (border + background)
-    func selectionColors(isSelected: Bool, isMismatch: Bool = false) -> (border: Color, background: Color) {
+    // Determine selection colors (border + background)
+    func selectionColors(isSelected: Bool, isMismatch: Bool = false, isMatch: Bool = false) -> (border: Color, background: Color) {
         if isMismatch { return (.red, Color.red.opacity(0.15)) }
+        if isMatch { return (.green, Color.green.opacity(0.25)) }
         guard isSelected else { return (.blue, Color.blue.opacity(0.2)) }
-        return isCurrentSelectionMatching
-        ? (.green, Color.green.opacity(0.25))
-        : (.blue, Color.blue.opacity(0.15))
+        return isCurrentSelectionMatching ? (.green, Color.green.opacity(0.25)) : (.blue, Color.blue.opacity(0.15))
     }
     
-    // Backwards-compatible helpers (jeśli UI używał ich wcześniej)
-    func selectionColor(isSelected: Bool, isMismatch: Bool = false) -> Color {
-        selectionColors(isSelected: isSelected, isMismatch: isMismatch).border
+    func selectionColor(isSelected: Bool, isMismatch: Bool = false, isMatch: Bool = false) -> Color {
+        selectionColors(isSelected: isSelected, isMismatch: isMismatch, isMatch: isMatch).border
     }
     
-    func selectionBackgroundColor(isSelected: Bool, isMismatch: Bool = false) -> Color {
-        selectionColors(isSelected: isSelected, isMismatch: isMismatch).background
+    func selectionBackgroundColor(isSelected: Bool, isMismatch: Bool = false, isMatch: Bool = false) -> Color {
+        selectionColors(isSelected: isSelected, isMismatch: isMismatch, isMatch: isMatch).background
     }
     
+    // Toggle selection
     func toggleLeftSelection(_ row: Int) {
         guard !isLeftFrozen(row) else { return }
         selectedLeftIndex = (selectedLeftIndex == row) ? nil : row
@@ -161,7 +139,7 @@ final class GameViewModel {
         selectedRightIndex = (selectedRightIndex == row) ? nil : row
     }
     
-    // Call after both sides are selected to handle match, mismatch, and refilling with delays and animations
+    // MARK: - Confirm selection
     func confirmSelectionIfMatching() async {
         guard
             let li = selectedLeftIndex,
@@ -174,7 +152,7 @@ final class GameViewModel {
         
         let currentRound = roundID
         
-        // Mismatch: freeze only these two for ~2s, show red state
+        // Handle mismatch
         guard leftItem.id == rightItem.id else {
             mismatchLeftIndex = li
             mismatchRightIndex = ri
@@ -183,8 +161,6 @@ final class GameViewModel {
             selectedLeftIndex = nil
             selectedRightIndex = nil
             
-            // wait but respect round cancellation
-            //try? await Task.sleep(for: .seconds(2))
             guard currentRound == roundID else { return }
             
             frozenLeft.remove(li)
@@ -196,24 +172,26 @@ final class GameViewModel {
             return
         }
         
-        // Match: freeze only the two clicked slots until new data appears and finishes appearing
+        // Handle match
         frozenLeft.insert(li)
         frozenRight.insert(ri)
+        matchLeftIndex = li
+        matchRightIndex = ri
         selectedLeftIndex = nil
         selectedRightIndex = nil
         
-        try? await Task.sleep(for: .seconds(1))
-        
-        // Shared random timing for disappearance
-        let disappearDuration = Double(Int.random(in: 1...3))
-        
-        // Disappear both sides together
-        leftItems[li] = nil
-        rightItems[ri] = nil
-
+        try? await Task.sleep(for: .seconds(1)) // Show green highlight
         guard currentRound == roundID else { return }
         
-        // Refill left empty slots from remainingItems
+        let disappearDuration = Double(Int.random(in: 1...3))
+        leftItems[li] = nil
+        rightItems[ri] = nil
+        matchLeftIndex = nil
+        matchRightIndex = nil
+        
+        guard currentRound == roundID else { return }
+        
+        // Refill left empty slots
         var emptyLeftIndices = (0..<maxVisibleRows).filter { leftItems[$0] == nil }
         emptyLeftIndices.shuffle()
         while !remainingItems.isEmpty, !emptyLeftIndices.isEmpty {
@@ -223,65 +201,49 @@ final class GameViewModel {
             }
         }
         
-        // Rebuild right as permutation of left
+        // Rebuild right side
         withAnimation(.easeInOut(duration: disappearDuration)) {
             rebuildRightPreservingStableSlots()
         }
         
         guard currentRound == roundID else { return }
-        
         frozenLeft.remove(li)
         frozenRight.remove(ri)
     }
     
-    // MARK: - Right column rebuild preserving stable slots (improved & robust)
+    // MARK: - Right column rebuild
     private func rebuildRightPreservingStableSlots() {
-        // Desired set: only the non-nil left items
         let desired = leftItems.compactMap { $0 }
-        
-        // Remaining to place initially includes all desired items
         var remainingToPlace = desired
-        
         var newRight: [QAItem?] = Array(repeating: nil, count: maxVisibleRows)
         
-        // Stage 1: Preserve "stable" items from previous rightItems if possible.
-        // Regardless whether they match left or not, remove them from remainingToPlace to avoid duplicates.
+        // Preserve stable slots from previous rightItems
         for i in 0..<maxVisibleRows {
             guard let leftAtI = leftItems[i] else { continue }
             if rightItems.indices.contains(i), let currentRight = rightItems[i] {
                 if let idx = remainingToPlace.firstIndex(of: currentRight) {
-                    // Remove from pool so we don't duplicate it later.
                     remainingToPlace.remove(at: idx)
                 }
-                // If currentRight does NOT match leftAtI, keep it in this slot (stability).
                 if currentRight.id != leftAtI.id {
                     newRight[i] = currentRight
                 }
-                // If it matched leftAtI, we intentionally don't place it (to avoid immediate match).
-                // but it's already removed from remainingToPlace so it cannot appear twice.
             }
         }
         
-        // Stage 2: Shuffle remaining pool and try to fill empty right slots with items that don't match left in same row.
+        // Fill empty right slots avoiding direct matches
         remainingToPlace.shuffle()
         for i in 0..<maxVisibleRows {
             guard newRight[i] == nil, let leftAtI = leftItems[i] else { continue }
-            
-            // Try to find an item in remainingToPlace that does NOT match leftAtI
             if let safeIdx = remainingToPlace.firstIndex(where: { $0.id != leftAtI.id }) {
                 newRight[i] = remainingToPlace.remove(at: safeIdx)
             } else if !remainingToPlace.isEmpty {
-                // Edge case: only items left match the left side for this row.
-                // Place one, but then attempt to swap with a previous row to avoid direct match.
                 let matchingItem = remainingToPlace.removeFirst()
                 newRight[i] = matchingItem
                 
-                // Try to find a previous index k we can swap with to avoid both matches
+                // Attempt to swap with previous row to avoid immediate match
                 if let k = (0..<i).first(where: { k in
                     guard let kItem = newRight[k], let kLeft = leftItems[k] else { return false }
-                    // Can't swap if new item (=matchingItem) would match left at k
                     if matchingItem.id == kLeft.id { return false }
-                    // Can't swap if kItem would match left at i
                     if kItem.id == leftAtI.id { return false }
                     return true
                 }) {
@@ -290,7 +252,7 @@ final class GameViewModel {
             }
         }
         
-        // Stage 3: If there are still items left in remainingToPlace (rare), fill any remaining empty slots ignoring the match rule.
+        // Fill any remaining empty slots
         for i in 0..<maxVisibleRows where newRight[i] == nil {
             if let next = remainingToPlace.popLast() {
                 newRight[i] = next
@@ -301,8 +263,7 @@ final class GameViewModel {
     }
 }
 
-// MARK: - Array safe subscript helper
-
+// MARK: - Array safe subscript
 extension Array {
     subscript(safe index: Int) -> Element? {
         indices.contains(index) ? self[index] : nil

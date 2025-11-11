@@ -1,10 +1,3 @@
-//
-//  GameView.swift
-//  BoM
-//
-//  Created by Bartlomiej Lanczyk on 11/11/2025.
-//
-
 import SwiftUI
 
 struct GameView: View {
@@ -51,6 +44,7 @@ struct GameView: View {
             isSelected: model.isLeftSelected,
             isFrozen: model.isLeftFrozen,
             isMismatch: model.isLeftMismatch,
+            isMatch: model.isLeftMatch,
             toggleSelection: model.toggleLeftSelection,
             accessibilityHint: "Left"
         )
@@ -65,11 +59,11 @@ struct GameView: View {
             isSelected: model.isRightSelected,
             isFrozen: model.isRightFrozen,
             isMismatch: model.isRightMismatch,
+            isMatch: model.isRightMatch,
             toggleSelection: model.toggleRightSelection,
             accessibilityHint: "Right"
         )
     }
-    
     
     @ViewBuilder
     private func makeCard<Item>(
@@ -80,6 +74,7 @@ struct GameView: View {
         isSelected: (Int) -> Bool,
         isFrozen: (Int) -> Bool,
         isMismatch: (Int) -> Bool,
+        isMatch: (Int) -> Bool,
         toggleSelection: @escaping (Int) -> Void,
         accessibilityHint: String
     ) -> some View {
@@ -88,12 +83,13 @@ struct GameView: View {
             let selected = isSelected(row)
             let frozen = isFrozen(row)
             let mismatch = isMismatch(row)
+            let match = isMatch(row)
             
             CardView(
                 title: title,
                 isSelected: selected,
-                selectionColor: model.selectionColor(isSelected: selected, isMismatch: mismatch),
-                selectionBackgroundColor: model.selectionBackgroundColor(isSelected: selected, isMismatch: mismatch),
+                selectionColor: model.selectionColor(isSelected: selected, isMismatch: mismatch, isMatch: match),
+                selectionBackgroundColor: model.selectionBackgroundColor(isSelected: selected, isMismatch: mismatch, isMatch: match),
                 accessibilityHint: accessibilityHint
             )
             .frame(height: rowHeight)
@@ -110,24 +106,8 @@ struct GameView: View {
             }
             .disabled(frozen)
         } else {
-            placeholder(rowHeight: rowHeight)
+            PlaceholderCard(height: rowHeight)
         }
-    }
-    
-    // MARK: - Placeholder
-    
-    @ViewBuilder
-    private func placeholder(rowHeight: CGFloat) -> some View {
-        Rectangle()
-            .fill(Color.blue.opacity(0.08))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.blue.opacity(0.3), lineWidth: 2)
-            )
-            .cornerRadius(12)
-            .allowsHitTesting(false)
-            .frame(height: rowHeight)
-            .accessibilityHidden(true)
     }
 }
 
