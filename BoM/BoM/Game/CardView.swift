@@ -9,13 +9,15 @@ import SwiftUI
 
 struct CardView: View {
     let title: String
+    var isSelected: Bool = false
+    var selectionColor: Color = .blue
     
     var body: some View {
         Rectangle()
             .fill(Color.blue.opacity(0.2))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.blue, lineWidth: 2)
+                    .stroke(isSelected ? selectionColor : Color.blue, lineWidth: isSelected ? 4 : 2)
             )
             .cornerRadius(12)
             .overlay(
@@ -25,9 +27,17 @@ struct CardView: View {
             )
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text(title))
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
 #Preview {
-    CardView(title: "title")
+    VStack(spacing: 16) {
+        CardView(title: "Not selected")
+            .frame(height: 80)
+        CardView(title: "Selected", isSelected: true)
+            .frame(height: 80)
+    }
+    .padding()
 }
+

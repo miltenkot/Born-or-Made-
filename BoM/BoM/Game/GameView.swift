@@ -19,6 +19,9 @@ struct GameView: View {
     
     private let items = Array(0..<10)
     
+    @State private var selectedLeftIndex: Int? = nil
+    @State private var selectedRightIndex: Int? = nil
+    
     var body: some View {
         GeometryReader { geo in
             let availableHeight = geo.size.height - (verticalPadding * 2)
@@ -29,8 +32,23 @@ struct GameView: View {
             
             LazyVGrid(columns: columns, alignment: .center, spacing: spacing) {
                 ForEach(items, id: \.self) { index in
-                    CardView(title: "Item \(index + 1)")
+                    let isLeftColumn = index % 2 == 0
+                    let isSelected = isLeftColumn
+                        ? (selectedLeftIndex == index)
+                        : (selectedRightIndex == index)
+                    
+                    CardView(title: "Item \(index + 1)", isSelected: isSelected)
                         .frame(height: rowHeight)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if isLeftColumn {
+                                selectedLeftIndex = (selectedLeftIndex == index) ? nil : index
+                            } else {
+                                selectedRightIndex = (selectedRightIndex == index) ? nil : index
+                            }
+                        }
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
+                        .accessibilityHint(Text(isLeftColumn ? "Left" : "Right"))
                 }
             }
             .padding(.horizontal, horizontalPadding)
@@ -44,3 +62,4 @@ struct GameView: View {
 #Preview {
     GameView()
 }
+
