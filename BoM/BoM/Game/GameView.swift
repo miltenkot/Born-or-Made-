@@ -59,7 +59,13 @@ struct GameView: View {
             )
             .frame(height: rowHeight)
             .contentShape(Rectangle())
-            .onTapGesture { model.toggleLeftSelection(row) }
+            .onTapGesture {
+                model.toggleLeftSelection(row)
+                // If both sides are selected, attempt to confirm and refill
+                if model.selectedLeftIndex != nil, model.selectedRightIndex != nil {
+                    model.confirmSelectionIfMatching()
+                }
+            }
             .accessibilityAddTraits(isSelected ? .isSelected : [])
             .accessibilityHint(Text("Left"))
         } else {
@@ -81,7 +87,13 @@ struct GameView: View {
             )
             .frame(height: rowHeight)
             .contentShape(Rectangle())
-            .onTapGesture { model.toggleRightSelection(row) }
+            .onTapGesture {
+                model.toggleRightSelection(row)
+                // If both sides are selected, attempt to confirm and refill
+                if model.selectedLeftIndex != nil, model.selectedRightIndex != nil {
+                    model.confirmSelectionIfMatching()
+                }
+            }
             .accessibilityAddTraits(isSelected ? .isSelected : [])
             .accessibilityHint(Text("Right"))
         } else {
@@ -112,3 +124,4 @@ struct GameView: View {
 #Preview {
     GameView()
 }
+
