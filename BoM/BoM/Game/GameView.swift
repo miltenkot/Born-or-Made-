@@ -12,50 +12,92 @@ struct GameView: View {
         GridItem(.flexible(), spacing: 12),
         GridItem(.flexible(), spacing: 12)
     ]
-    private let rowsCount: Int = 5
     private let spacing: CGFloat = 12
     private let horizontalPadding: CGFloat = 16
     private let verticalPadding: CGFloat = 16
     
-    private let items = Array(0..<10)
+    private let qaItems: [QAItem] = [
+        QAItem(question: "Stolica Francji", answer: "Paryż"),
+        QAItem(question: "2 + 2", answer: "4"),
+        QAItem(question: "Kolor nieba", answer: "Niebieski"),
+        QAItem(question: "Język projektu", answer: "Swift"),
+        QAItem(question: "Rok przestępny", answer: "366 dni")
+    ]
     
+    private var rowsCount: Int { qaItems.count }
+    private var leftItems: [QAItem] { qaItems }
+    
+    @State private var rightItems: [QAItem] = []
     @State private var selectedLeftIndex: Int? = nil
     @State private var selectedRightIndex: Int? = nil
+    
+    private var isCurrentSelectionMatching: Bool {
+        guard
+            let li = selectedLeftIndex,
+            let ri = selectedRightIndex,
+            leftItems.indices.contains(li),
+            rightItems.indices.contains(ri)
+        else { return false }
+        return leftItems[li].answer == rightItems[ri].answer
+    }
+    
+    init() {
+        
+    }
     
     var body: some View {
         GeometryReader { geo in
             let availableHeight = geo.size.height - (verticalPadding * 2)
             let rowHeight = max(
-                (availableHeight - (CGFloat(rowsCount - 1) * spacing)) / CGFloat(rowsCount),
+                (availableHeight - (CGFloat(rowsCount - 1) * spacing)) / CGFloat(max(rowsCount, 1)),
                 0
             )
             
             LazyVGrid(columns: columns, alignment: .center, spacing: spacing) {
-                ForEach(items, id: \.self) { index in
-                    let isLeftColumn = index % 2 == 0
-                    let isSelected = isLeftColumn
-                        ? (selectedLeftIndex == index)
-                        : (selectedRightIndex == index)
+                ForEach(0..<rowsCount, id: \.self) { row in
+                    let leftTitle = leftItems[row].question
+                    let isLeftSelected = (selectedLeftIndex == row)
+                    let leftSelectionColor: Color = (isLeftSelected && isCurrentSelectionMatching) ? .green : .blue
                     
-                    CardView(title: "Item \(index + 1)", isSelected: isSelected)
+                    CardView(title: leftTitle, isSelected: isLeftSelected, selectionColor: leftSelectionColor)
                         .frame(height: rowHeight)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            if isLeftColumn {
-                                selectedLeftIndex = (selectedLeftIndex == index) ? nil : index
-                            } else {
-                                selectedRightIndex = (selectedRightIndex == index) ? nil : index
-                            }
+                            selectedLeftIndex = (selectedLeftIndex == row) ? nil : row
                         }
-                        .accessibilityAddTraits(isSelected ? .isSelected : [])
-                        .accessibilityHint(Text(isLeftColumn ? "Left" : "Right"))
+                        .accessibilityAddTraits(isLeftSelected ? .isSelected : [])
+                        .accessibilityHint(Text("Left"))
+                    
+                    let rightTitle = rightItems.indices.contains(row) ? rightItems[row].answer : ""
+                    let isRightSelected = (selectedRightIndex == row)
+                    let rightSelectionColor: Color = (isRightSelected && isCurrentSelectionMatching) ? .green : .blue
+                    
+                    CardView(title: rightTitle, isSelected: isRightSelected, selectionColor: rightSelectionColor)
+                        .frame(height: rowHeight)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            selectedRightIndex = (selectedRightIndex == row) ? nil : row
+                        }
+                        .accessibilityAddTraits(isRightSelected ? .isSelected : [])
+                        .accessibilityHint(Text("Right"))
                 }
             }
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, verticalPadding)
         }
+        .onAppear {
+            rightItems = qaItems.shuffled()
+        }
         .ignoresSafeArea(.keyboard)
         .background(Color(.systemBackground))
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Shuffle") {
+                    rightItems = qaItems.shuffled()
+                    selectedRightIndex = nil
+                }
+            }
+        }
     }
 }
 
