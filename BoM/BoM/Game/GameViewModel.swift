@@ -22,7 +22,7 @@ final class GameViewModel {
     // Source data
     let qaItems: [QAItem] = [
         QAItem(question: "Stolica Francji", answer: "Paryż"),
-        QAItem(question: "2 + 2", answer: "4"),
+        QAItem(question: "1 + 1", answer: "2"),
         QAItem(question: "Kolor nieba", answer: "Niebieski"),
         QAItem(question: "Język używany do tworzenia aplikacji na iOS", answer: "Swift"),
         QAItem(question: "Rok przestępny ma", answer: "366 dni"),
@@ -53,7 +53,7 @@ final class GameViewModel {
     var selectedLeftIndex: Int? = nil
     var selectedRightIndex: Int? = nil
     
-    // Frozen indices to temporarily disable taps (used for match animation or mismatch penalty)
+    // Per-slot freeze to disable taps on specific cells
     private(set) var frozenLeft: Set<Int> = []
     private(set) var frozenRight: Set<Int> = []
     
@@ -123,13 +123,11 @@ final class GameViewModel {
     }
     
     func selectionColor(isSelected: Bool, isMismatch: Bool = false) -> Color {
-        // If mismatch, show a red border regardless of selection
         if isMismatch { return .red }
         return (isSelected && isCurrentSelectionMatching) ? .green : .blue
     }
     
     func selectionBackgroundColor(isSelected: Bool, isMismatch: Bool = false) -> Color {
-        // If mismatch, show a red background aura
         if isMismatch { return Color.red.opacity(0.15) }
         guard isSelected else { return Color.blue.opacity(0.2) }
         return isCurrentSelectionMatching
@@ -158,19 +156,15 @@ final class GameViewModel {
             let rightItem = rightItems[ri]
         else { return }
         
-        // Mismatch: show red border and freeze only these two cells for 2 seconds
+        // Mismatch: freeze only these two for ~2s, show red state
         guard leftItem.id == rightItem.id else {
-            // Mark mismatch and freeze the two slots
             mismatchLeftIndex = li
             mismatchRightIndex = ri
             frozenLeft.insert(li)
             frozenRight.insert(ri)
-            // Immediately clear selections — borders remain visible thanks to mismatch flags
             selectedLeftIndex = nil
             selectedRightIndex = nil
-            // Wait 2 seconds
             try? await Task.sleep(nanoseconds: 2_000_000_000)
-            // Unfreeze and clear mismatch state
             frozenLeft.remove(li)
             frozenRight.remove(ri)
             mismatchLeftIndex = nil
@@ -178,46 +172,43 @@ final class GameViewModel {
             return
         }
         
-        // Match: perform animation and refill
+        // Match: freeze only the two clicked slots until new data appears and finishes appearing
         frozenLeft.insert(li)
         frozenRight.insert(ri)
-        
-        // Clear selection immediately so the UI doesn't suggest further actions
         selectedLeftIndex = nil
         selectedRightIndex = nil
         
-        // Random freeze duration: 1..3 seconds
-        let freezeSeconds = Double(Int.random(in: 1...3))
-        try? await Task.sleep(nanoseconds: UInt64(freezeSeconds * 1_000_000_000))
+        // Shared random timing for disappearance
+        let disappearDuration = Double(Int.random(in: 1...3))
+        let appearDuration = 0.35
         
-        // Remove matched items (both sides) with animation
-        withAnimation(.easeInOut) {
+        // Disappear both sides together
+        withAnimation(.easeInOut(duration: disappearDuration)) {
             roundItems[li] = nil
             rightItems[ri] = nil
         }
+        try? await Task.sleep(nanoseconds: UInt64(disappearDuration * 1_000_000_000))
         
-        // Unfreeze both slots
-        frozenLeft.remove(li)
-        frozenRight.remove(ri)
-        
-        // After 1 second, insert new items in random empty slots (if any remain)
-        try? await Task.sleep(nanoseconds: 1_000_000_000)
-        
-        // Collect empty indices on the left
+        // Refill left empty slots
         let emptyLeftIndices = (0..<fixedRows).filter { roundItems[$0] == nil }
-        // Fill empty left slots with new items randomly
         var shuffledEmptyLeft = emptyLeftIndices.shuffled()
         while !remainingItems.isEmpty, !shuffledEmptyLeft.isEmpty {
             let idx = shuffledEmptyLeft.removeFirst()
-            withAnimation(.spring) {
-                roundItems[idx] = remainingItems.removeFirst()
-            }
+            roundItems[idx] = remainingItems.removeFirst()
         }
         
-        // Rebuild right column permutation to reflect current left, preserving stability where possible
-        withAnimation(.easeInOut) {
-            rebuildRightPreservingStableSlots()
+        // Rebuild right as permutation of left
+        rebuildRightPreservingStableSlots()
+        
+        // Animate appearance (both sides same timing)
+        withAnimation(.easeInOut(duration: appearDuration)) {
+            // values already set; block provides consistent timing
         }
+        try? await Task.sleep(nanoseconds: UInt64(appearDuration * 1_000_000_000))
+        
+        // Now that new data is visible, unlock only these two slots
+        frozenLeft.remove(li)
+        frozenRight.remove(ri)
     }
     
     // MARK: - Right column rebuild preserving stable slots
@@ -227,9 +218,7 @@ final class GameViewModel {
         
         var newRight: [QAItem?] = Array(repeating: nil, count: fixedRows)
         for i in 0..<fixedRows {
-            guard let leftAtI = roundItems[i] else {
-                continue
-            }
+            guard let leftAtI = roundItems[i] else { continue }
             if let currentRight = rightItems.indices.contains(i) ? rightItems[i] : nil,
                let idx = remainingToPlace.firstIndex(of: currentRight),
                currentRight.id != leftAtI.id {
