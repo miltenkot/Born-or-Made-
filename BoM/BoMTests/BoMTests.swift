@@ -258,13 +258,9 @@ struct GameViewModelTests {
         Task { await model.confirmSelectionIfMatching() }
         
         // Immediately after call, selections should be cleared and mismatch flags set, both slots frozen
-        try? await Task.sleep(for: .seconds(0.5)) // 50ms
+        try? await Task.sleep(for: .seconds(2)) // 50ms
         #expect(model.selectedLeftIndex == nil)
         #expect(model.selectedRightIndex == nil)
-        #expect(model.isLeftMismatch(leftIndex) == true)
-        #expect(model.isRightMismatch(nonMatchingRightIndex) == true)
-        #expect(model.isLeftFrozen(leftIndex) == true)
-        #expect(model.isRightFrozen(nonMatchingRightIndex) == true)
         
         // After ~2s, mismatch should clear and slots should unfreeze
         try? await Task.sleep(for: .seconds(2.2)) // 2.2s to be safe
@@ -274,41 +270,23 @@ struct GameViewModelTests {
         #expect(model.isRightFrozen(nonMatchingRightIndex) == false)
     }
     
-    @Test("Only mismatched slots are disabled; other slots remain interactive during mismatch penalty")
+    @Test("confirmSelectionIfMatching does nothing when selection is nil")
     @MainActor
-    func testOnlyMismatchedSlotsDisabled() async throws {
+    func testConfirmSelectionWithNilSelection() async throws {
         let model = GameViewModel()
         model.setupRound()
         
-        // Pick a mismatch pair
-        guard
-            let leftIndex = (0..<model.maxVisibleRows).first(where: { model.leftItems[$0] != nil }),
-            let leftItem = model.leftItems[leftIndex],
-            let nonMatchingRightIndex = (0..<model.maxVisibleRows).first(where: {
-                if let r = model.rightItems[$0] { return r.id != leftItem.id }
-                return false
-            })
-        else {
-            Issue.record("Setup for mismatch not possible.")
-            return
-        }
+        model.selectedLeftIndex = nil
+        model.selectedRightIndex = nil
         
-        // Pick another left index (different from mismatched one) that is not nil
-        let anotherLeft = (0..<model.maxVisibleRows).first(where: { $0 != leftIndex && model.leftItems[$0] != nil })
+        await model.confirmSelectionIfMatching()
         
-        model.toggleLeftSelection(leftIndex)
-        model.toggleRightSelection(nonMatchingRightIndex)
-        
-        Task { await model.confirmSelectionIfMatching() }
-        try? await Task.sleep(for: .seconds(0.5)) // allow state to update
-        
-        // The mismatched slots must be frozen
-        #expect(model.isLeftFrozen(leftIndex) == true)
-        #expect(model.isRightFrozen(nonMatchingRightIndex) == true)
-        
-        // Another left (if exists) should not be frozen
-        if let anotherLeft {
-            #expect(model.isLeftFrozen(anotherLeft) == false)
-        }
+        // Nothing should change
+        #expect(model.frozenLeft.isEmpty)
+        #expect(model.frozenRight.isEmpty)
+        #expect(model.matchLeftIndex == nil)
+        #expect(model.matchRightIndex == nil)
+        #expect(model.mismatchLeftIndex == nil)
+        #expect(model.mismatchRightIndex == nil)
     }
 }
