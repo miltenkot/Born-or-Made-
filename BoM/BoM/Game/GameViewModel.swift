@@ -16,8 +16,6 @@ final class GameViewModel {
     let horizontalPadding: CGFloat = 16
     let verticalPadding: CGFloat = 16
     let maxVisibleRows: Int = 5
-    // Fixed number of rows in the grid (5 rows x 2 columns = 10 slots)
-    let fixedRows: Int = 5
     
     // Source data
     let qaItems: [QAItem] = [
@@ -44,7 +42,7 @@ final class GameViewModel {
     ]
 
     // Game state
-    var roundItems: [QAItem?] = []
+    var leftItems: [QAItem?] = []
     var rightItems: [QAItem?] = []
     
     // Pool of remaining, not yet used items
@@ -68,9 +66,9 @@ final class GameViewModel {
         guard
             let li = selectedLeftIndex,
             let ri = selectedRightIndex,
-            roundItems.indices.contains(li),
+            leftItems.indices.contains(li),
             rightItems.indices.contains(ri),
-            let l = roundItems[li],
+            let l = leftItems[li],
             let r = rightItems[ri]
         else { return false }
         return l.id == r.id
@@ -79,13 +77,12 @@ final class GameViewModel {
     // API
     func setupRound() {
         remainingItems = qaItems.shuffled()
-        roundItems = Array(repeating: nil, count: fixedRows)
-        rightItems = Array(repeating: nil, count: fixedRows)
+        leftItems = Array(repeating: nil, count: maxVisibleRows)
+        rightItems = Array(repeating: nil, count: maxVisibleRows)
         
         for i in 0..<rowsCount {
-            if let next = remainingItems.first {
-                roundItems[i] = next
-                remainingItems.removeFirst()
+            if let next = remainingItems.popLast() {
+                leftItems[i] = next
             }
         }
         rebuildRightPreservingStableSlots()
@@ -150,9 +147,9 @@ final class GameViewModel {
         guard
             let li = selectedLeftIndex,
             let ri = selectedRightIndex,
-            roundItems.indices.contains(li),
+            leftItems.indices.contains(li),
             rightItems.indices.contains(ri),
-            let leftItem = roundItems[li],
+            let leftItem = leftItems[li],
             let rightItem = rightItems[ri]
         else { return }
         
@@ -164,11 +161,13 @@ final class GameViewModel {
             frozenRight.insert(ri)
             selectedLeftIndex = nil
             selectedRightIndex = nil
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            try? await Task.sleep(for: .seconds(2))
             frozenLeft.remove(li)
             frozenRight.remove(ri)
-            mismatchLeftIndex = nil
-            mismatchRightIndex = nil
+            withAnimation(.easeInOut(duration: 0.25)) {
+                mismatchLeftIndex = nil
+                mismatchRightIndex = nil
+            }
             return
         }
         
@@ -184,17 +183,17 @@ final class GameViewModel {
         
         // Disappear both sides together
         withAnimation(.easeInOut(duration: disappearDuration)) {
-            roundItems[li] = nil
+            leftItems[li] = nil
             rightItems[ri] = nil
         }
-        try? await Task.sleep(nanoseconds: UInt64(disappearDuration * 1_000_000_000))
+        try? await Task.sleep(for: .seconds(disappearDuration))
         
         // Refill left empty slots
-        let emptyLeftIndices = (0..<fixedRows).filter { roundItems[$0] == nil }
+        let emptyLeftIndices = (0..<maxVisibleRows).filter { leftItems[$0] == nil }
         var shuffledEmptyLeft = emptyLeftIndices.shuffled()
         while !remainingItems.isEmpty, !shuffledEmptyLeft.isEmpty {
             let idx = shuffledEmptyLeft.removeFirst()
-            roundItems[idx] = remainingItems.removeFirst()
+            leftItems[idx] = remainingItems.popLast()
         }
         
         // Rebuild right as permutation of left
@@ -204,7 +203,7 @@ final class GameViewModel {
         withAnimation(.easeInOut(duration: appearDuration)) {
             // values already set; block provides consistent timing
         }
-        try? await Task.sleep(nanoseconds: UInt64(appearDuration * 1_000_000_000))
+        try? await Task.sleep(for: .seconds(appearDuration))
         
         // Now that new data is visible, unlock only these two slots
         frozenLeft.remove(li)
@@ -213,12 +212,12 @@ final class GameViewModel {
     
     // MARK: - Right column rebuild preserving stable slots
     private func rebuildRightPreservingStableSlots() {
-        let desired = roundItems.compactMap { $0 }
+        let desired = leftItems.compactMap { $0 }
         var remainingToPlace = desired
         
-        var newRight: [QAItem?] = Array(repeating: nil, count: fixedRows)
-        for i in 0..<fixedRows {
-            guard let leftAtI = roundItems[i] else { continue }
+        var newRight: [QAItem?] = Array(repeating: nil, count: maxVisibleRows)
+        for i in 0..<maxVisibleRows {
+            guard let leftAtI = leftItems[i] else { continue }
             if let currentRight = rightItems.indices.contains(i) ? rightItems[i] : nil,
                let idx = remainingToPlace.firstIndex(of: currentRight),
                currentRight.id != leftAtI.id {
@@ -228,12 +227,30 @@ final class GameViewModel {
         }
         
         remainingToPlace.shuffle()
-        for i in 0..<fixedRows {
-            guard newRight[i] == nil, let leftAtI = roundItems[i] else { continue }
+        for i in 0..<maxVisibleRows {
+            guard newRight[i] == nil, let leftAtI = leftItems[i] else { continue }
+            
             if let safeIdx = remainingToPlace.firstIndex(where: { $0.id != leftAtI.id }) {
                 newRight[i] = remainingToPlace.remove(at: safeIdx)
-            } else {
-                newRight[i] = remainingToPlace.isEmpty ? nil : remainingToPlace.removeFirst()
+            } else if !remainingToPlace.isEmpty {
+                // Bug case: Only matching items are left.
+                let matchingItem = remainingToPlace.removeFirst()
+                newRight[i] = matchingItem
+                
+                // Try to swap with a previous row `k` to avoid the match
+                let swapCandidateIndex = (0..<i).first { k in
+                    guard let kItem = newRight[k], let kLeft = leftItems[k] else { return false }
+                    // Can't swap if new item (matchingItem) matches row k's left side
+                    if matchingItem.id == kLeft.id { return false }
+                    // Can't swap if k's item (kItem) matches row i's left side
+                    if kItem.id == leftAtI.id { return false }
+                    // This swap is safe
+                    return true
+                }
+                
+                if let k = swapCandidateIndex {
+                    newRight.swapAt(i, k)
+                }
             }
         }
         

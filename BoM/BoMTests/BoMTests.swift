@@ -14,7 +14,7 @@ struct GameViewModelTests {
     
     // Helper: assert that rightItems is a permutation of non-nil left items
     @MainActor private func assertRightIsPermutationOfLeft(_ model: GameViewModel) {
-        let left = model.roundItems.compactMap { $0 }
+        let left = model.leftItems.compactMap { $0 }
         let right = model.rightItems.compactMap { $0 }
         #expect(left.count == right.count, "Right should contain same number of non-nil items as left.")
         let leftIDs = left.map(\.id).sorted { $0.uuidString < $1.uuidString }
@@ -26,15 +26,15 @@ struct GameViewModelTests {
     @MainActor private func canAvoidSameIndexMatches(_ model: GameViewModel) -> Bool {
         // Map: item id -> indices where it appears on the right
         var rightIndicesByID: [UUID: [Int]] = [:]
-        for i in 0..<model.fixedRows {
+        for i in 0..<model.maxVisibleRows {
             if let r = model.rightItems[i] {
                 rightIndicesByID[r.id, default: []].append(i)
             }
         }
         var unavoidableClashes = 0
         var totalPairs = 0
-        for i in 0..<model.fixedRows {
-            guard let l = model.roundItems[i] else { continue }
+        for i in 0..<model.maxVisibleRows {
+            guard let l = model.leftItems[i] else { continue }
             totalPairs += 1
             let candidates = rightIndicesByID[l.id, default: []]
             if candidates.contains(i) && candidates.count == 1 {
@@ -49,8 +49,8 @@ struct GameViewModelTests {
     @MainActor private func assertNoSameIndexMatchesWhenApproxAvoidable(_ model: GameViewModel) {
         var clashCount = 0
         var nonNilPairs = 0
-        for i in 0..<model.fixedRows {
-            if let l = model.roundItems[i], let r = model.rightItems[i] {
+        for i in 0..<model.maxVisibleRows {
+            if let l = model.leftItems[i], let r = model.rightItems[i] {
                 nonNilPairs += 1
                 if l.id == r.id {
                     clashCount += 1
@@ -70,12 +70,12 @@ struct GameViewModelTests {
         let model = GameViewModel()
         model.setupRound()
         
-        // Arrays sized to fixedRows
-        #expect(model.roundItems.count == model.fixedRows)
-        #expect(model.rightItems.count == model.fixedRows)
+        // Arrays sized to maxVisibleRows
+        #expect(model.leftItems.count == model.maxVisibleRows)
+        #expect(model.rightItems.count == model.maxVisibleRows)
         
         // Left filled up to rowsCount
-        let nonNilLeft = model.roundItems.compactMap { $0 }
+        let nonNilLeft = model.leftItems.compactMap { $0 }
         #expect(nonNilLeft.count == model.rowsCount)
         
         // Selections cleared
@@ -94,7 +94,7 @@ struct GameViewModelTests {
         model.setupRound()
         
         // Pick a valid left row
-        let leftRow = (0..<model.fixedRows).first(where: { model.roundItems[$0] != nil })!
+        let leftRow = (0..<model.maxVisibleRows).first(where: { model.leftItems[$0] != nil })!
         #expect(model.isLeftSelected(leftRow) == false)
         
         model.toggleLeftSelection(leftRow)
@@ -109,7 +109,7 @@ struct GameViewModelTests {
         #expect(model.isLeftSelected(leftRow) == false)
         
         // Do the same for right
-        let rightRow = (0..<model.fixedRows).first(where: { model.rightItems[$0] != nil })!
+        let rightRow = (0..<model.maxVisibleRows).first(where: { model.rightItems[$0] != nil })!
         #expect(model.isRightSelected(rightRow) == false)
         model.toggleRightSelection(rightRow)
         #expect(model.isRightSelected(rightRow) == true)
@@ -125,7 +125,7 @@ struct GameViewModelTests {
         
         // Build a map from right id to index
         var rightIndexByID: [UUID: Int] = [:]
-        for i in 0..<model.fixedRows {
+        for i in 0..<model.maxVisibleRows {
             if let r = model.rightItems[i] {
                 rightIndexByID[r.id] = i
             }
@@ -133,8 +133,8 @@ struct GameViewModelTests {
         
         // For the first non-nil left, find its matching right index
         guard
-            let leftIndex = (0..<model.fixedRows).first(where: { model.roundItems[$0] != nil }),
-            let leftItem = model.roundItems[leftIndex],
+            let leftIndex = (0..<model.maxVisibleRows).first(where: { model.leftItems[$0] != nil }),
+            let leftItem = model.leftItems[leftIndex],
             let matchingRightIndex = rightIndexByID[leftItem.id]
         else {
             Issue.record("Could not find a matching pair to test.")
@@ -142,7 +142,7 @@ struct GameViewModelTests {
         }
         
         // Select a non-matching right first
-        if let nonMatchingRightIndex = (0..<model.fixedRows).first(where: {
+        if let nonMatchingRightIndex = (0..<model.maxVisibleRows).first(where: {
             $0 != matchingRightIndex && model.rightItems[$0] != nil
         }) {
             model.toggleLeftSelection(leftIndex)
@@ -167,15 +167,15 @@ struct GameViewModelTests {
         
         // Find a matching pair indices by id
         var rightIndexByID: [UUID: Int] = [:]
-        for i in 0..<model.fixedRows {
+        for i in 0..<model.maxVisibleRows {
             if let r = model.rightItems[i] {
                 rightIndexByID[r.id] = i
             }
         }
         
         guard
-            let leftIndex = (0..<model.fixedRows).first(where: { model.roundItems[$0] != nil }),
-            let leftItem = model.roundItems[leftIndex],
+            let leftIndex = (0..<model.maxVisibleRows).first(where: { model.leftItems[$0] != nil }),
+            let leftItem = model.leftItems[leftIndex],
             let rightIndex = rightIndexByID[leftItem.id]
         else {
             Issue.record("Could not find a matching pair to test.")
@@ -183,7 +183,7 @@ struct GameViewModelTests {
         }
         
         // Capture state before confirmation
-        let beforeLeft = model.roundItems
+        let beforeLeft = model.leftItems
         
         // Select and confirm
         model.toggleLeftSelection(leftIndex)
@@ -197,17 +197,17 @@ struct GameViewModelTests {
         #expect(model.selectedRightIndex == nil)
         
         // Only the leftIndex slot should have changed (either replaced with new item or nil if pool empty)
-        for i in 0..<model.fixedRows {
+        for i in 0..<model.maxVisibleRows {
             if i == leftIndex {
                 let old = beforeLeft[i]
-                let new = model.roundItems[i]
+                let new = model.leftItems[i]
                 if let old, let new {
                     #expect(old.id != new.id, "Matched left slot should be replaced with a new item when available.")
                 } else {
                     #expect(true) // nil acceptable when pool exhausted
                 }
             } else {
-                #expect(model.roundItems[i] == beforeLeft[i], "Other left slots should remain unchanged.")
+                #expect(model.leftItems[i] == beforeLeft[i], "Other left slots should remain unchanged.")
             }
         }
         
@@ -224,15 +224,15 @@ struct GameViewModelTests {
         
         // Find a left index and a non-matching right index
         var rightIndicesByID: [UUID: [Int]] = [:]
-        for i in 0..<model.fixedRows {
+        for i in 0..<model.maxVisibleRows {
             if let r = model.rightItems[i] {
                 rightIndicesByID[r.id, default: []].append(i)
             }
         }
         
         guard
-            let leftIndex = (0..<model.fixedRows).first(where: { model.roundItems[$0] != nil }),
-            let leftItem = model.roundItems[leftIndex]
+            let leftIndex = (0..<model.maxVisibleRows).first(where: { model.leftItems[$0] != nil }),
+            let leftItem = model.leftItems[leftIndex]
         else {
             Issue.record("No left item to test mismatch.")
             return
@@ -240,7 +240,7 @@ struct GameViewModelTests {
         
         // Choose any right index with a different id
         guard
-            let nonMatchingRightIndex = (0..<model.fixedRows).first(where: {
+            let nonMatchingRightIndex = (0..<model.maxVisibleRows).first(where: {
                 if let r = model.rightItems[$0] { return r.id != leftItem.id }
                 return false
             })
@@ -258,7 +258,7 @@ struct GameViewModelTests {
         Task { await model.confirmSelectionIfMatching() }
         
         // Immediately after call, selections should be cleared and mismatch flags set, both slots frozen
-        try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+        try? await Task.sleep(for: .seconds(0.5)) // 50ms
         #expect(model.selectedLeftIndex == nil)
         #expect(model.selectedRightIndex == nil)
         #expect(model.isLeftMismatch(leftIndex) == true)
@@ -267,7 +267,7 @@ struct GameViewModelTests {
         #expect(model.isRightFrozen(nonMatchingRightIndex) == true)
         
         // After ~2s, mismatch should clear and slots should unfreeze
-        try? await Task.sleep(nanoseconds: 2_200_000_000) // 2.2s to be safe
+        try? await Task.sleep(for: .seconds(2.2)) // 2.2s to be safe
         #expect(model.isLeftMismatch(leftIndex) == false)
         #expect(model.isRightMismatch(nonMatchingRightIndex) == false)
         #expect(model.isLeftFrozen(leftIndex) == false)
@@ -282,9 +282,9 @@ struct GameViewModelTests {
         
         // Pick a mismatch pair
         guard
-            let leftIndex = (0..<model.fixedRows).first(where: { model.roundItems[$0] != nil }),
-            let leftItem = model.roundItems[leftIndex],
-            let nonMatchingRightIndex = (0..<model.fixedRows).first(where: {
+            let leftIndex = (0..<model.maxVisibleRows).first(where: { model.leftItems[$0] != nil }),
+            let leftItem = model.leftItems[leftIndex],
+            let nonMatchingRightIndex = (0..<model.maxVisibleRows).first(where: {
                 if let r = model.rightItems[$0] { return r.id != leftItem.id }
                 return false
             })
@@ -294,13 +294,13 @@ struct GameViewModelTests {
         }
         
         // Pick another left index (different from mismatched one) that is not nil
-        let anotherLeft = (0..<model.fixedRows).first(where: { $0 != leftIndex && model.roundItems[$0] != nil })
+        let anotherLeft = (0..<model.maxVisibleRows).first(where: { $0 != leftIndex && model.leftItems[$0] != nil })
         
         model.toggleLeftSelection(leftIndex)
         model.toggleRightSelection(nonMatchingRightIndex)
         
         Task { await model.confirmSelectionIfMatching() }
-        try? await Task.sleep(nanoseconds: 50_000_000) // allow state to update
+        try? await Task.sleep(for: .seconds(0.5)) // allow state to update
         
         // The mismatched slots must be frozen
         #expect(model.isLeftFrozen(leftIndex) == true)

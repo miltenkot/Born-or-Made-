@@ -15,22 +15,20 @@ struct GameView: View {
         GridItem(.flexible(), spacing: 12)
     ]
     
-    private var fixedRows: Int {
-        model.fixedRows
+    private var maxVisibleRows: Int {
+        model.maxVisibleRows
     }
-    
-    init() { }
     
     var body: some View {
         GeometryReader { geo in
             let availableHeight = geo.size.height - (model.verticalPadding * 2)
             let rowHeight = max(
-                (availableHeight - (CGFloat(fixedRows - 1) * model.spacing)) / CGFloat(max(fixedRows, 1)),
+                (availableHeight - (CGFloat(maxVisibleRows - 1) * model.spacing)) / CGFloat(max(maxVisibleRows, 1)),
                 0
             )
             
             LazyVGrid(columns: columns, alignment: .center, spacing: model.spacing) {
-                ForEach(0..<fixedRows, id: \.self) { row in
+                ForEach(0..<maxVisibleRows, id: \.self) { row in
                     makeLeftCard(row: row, rowHeight: rowHeight)
                     makeRightCard(row: row, rowHeight: rowHeight)
                 }
@@ -49,7 +47,7 @@ struct GameView: View {
     
     @ViewBuilder
     private func makeLeftCard(row: Int, rowHeight: CGFloat) -> some View {
-        if model.roundItems.indices.contains(row), let item = model.roundItems[row] {
+        if model.leftItems.indices.contains(row), let item = model.leftItems[row] {
             let title = item.question
             let isSelected = model.isLeftSelected(row)
             let isFrozen = model.isLeftFrozen(row)
@@ -127,9 +125,6 @@ struct GameView: View {
                     .stroke(Color.blue.opacity(0.3), lineWidth: 2)
             )
             .cornerRadius(12)
-            .overlay(
-                Text("")
-            )
             .allowsHitTesting(false)
     }
 }
