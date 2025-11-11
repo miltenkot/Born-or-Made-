@@ -57,7 +57,7 @@ struct GameView: View {
             )
             .frame(height: rowHeight)
             .opacity(isFrozen ? 0.6 : 1.0)
-            .contentShape(Rectangle())
+            .contentShape(.rect)
             .onTapGesture {
                 guard !isFrozen else { return }
                 model.toggleLeftSelection(row)
@@ -90,7 +90,7 @@ struct GameView: View {
             )
             .frame(height: rowHeight)
             .opacity(isFrozen ? 0.6 : 1.0)
-            .contentShape(Rectangle())
+            .contentShape(.rect)
             .onTapGesture {
                 guard !isFrozen else { return }
                 model.toggleRightSelection(row)

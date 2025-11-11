@@ -184,12 +184,12 @@ final class GameViewModel {
             selectedRightIndex = nil
             
             // wait but respect round cancellation
-            try? await Task.sleep(for: .seconds(2))
+            //try? await Task.sleep(for: .seconds(2))
             guard currentRound == roundID else { return }
             
             frozenLeft.remove(li)
             frozenRight.remove(ri)
-            withAnimation(.easeInOut(duration: 0.25)) {
+            withAnimation(.easeInOut(duration: 2)) {
                 mismatchLeftIndex = nil
                 mismatchRightIndex = nil
             }
@@ -204,37 +204,30 @@ final class GameViewModel {
         
         // Shared random timing for disappearance
         let disappearDuration = Double(Int.random(in: 1...3))
-        let appearDuration = 0.35
         
         // Disappear both sides together
-        withAnimation(.easeInOut(duration: disappearDuration)) {
-            leftItems[li] = nil
-            rightItems[ri] = nil
-        }
+        leftItems[li] = nil
+        rightItems[ri] = nil
         
-        try? await Task.sleep(for: .seconds(disappearDuration))
         guard currentRound == roundID else { return }
         
         // Refill left empty slots from remainingItems
         var emptyLeftIndices = (0..<maxVisibleRows).filter { leftItems[$0] == nil }
         emptyLeftIndices.shuffle()
         while !remainingItems.isEmpty, !emptyLeftIndices.isEmpty {
-            let idx = emptyLeftIndices.removeFirst()
-            leftItems[idx] = remainingItems.popLast()
+            withAnimation(.easeInOut(duration: disappearDuration)) {
+                let idx = emptyLeftIndices.removeFirst()
+                leftItems[idx] = remainingItems.popLast()
+            }
         }
         
         // Rebuild right as permutation of left
-        rebuildRightPreservingStableSlots()
-        
-        // Animate appearance (both sides same timing)
-        withAnimation(.easeInOut(duration: appearDuration)) {
-            // values already set; block provides consistent timing
+        withAnimation(.easeInOut(duration: disappearDuration)) {
+            rebuildRightPreservingStableSlots()
         }
         
-        try? await Task.sleep(for: .seconds(appearDuration))
         guard currentRound == roundID else { return }
         
-        // Now that new data is visible, unlock only these two slots
         frozenLeft.remove(li)
         frozenRight.remove(ri)
     }
