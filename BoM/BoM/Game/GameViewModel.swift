@@ -202,13 +202,15 @@ final class GameViewModel {
         selectedLeftIndex = nil
         selectedRightIndex = nil
         
+        try? await Task.sleep(for: .seconds(1))
+        
         // Shared random timing for disappearance
         let disappearDuration = Double(Int.random(in: 1...3))
         
         // Disappear both sides together
         leftItems[li] = nil
         rightItems[ri] = nil
-        
+
         guard currentRound == roundID else { return }
         
         // Refill left empty slots from remainingItems
