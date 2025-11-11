@@ -10,11 +10,6 @@ import SwiftUI
 struct GameView: View {
     @State private var model = GameViewModel()
     
-    private let columns: [GridItem] = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
-    ]
-    
     private var maxVisibleRows: Int {
         model.maxVisibleRows
     }
@@ -27,10 +22,12 @@ struct GameView: View {
                 0
             )
             
-            LazyVGrid(columns: columns, alignment: .center, spacing: model.spacing) {
+            Grid(horizontalSpacing: model.spacing, verticalSpacing: model.spacing) {
                 ForEach(0..<maxVisibleRows, id: \.self) { row in
-                    makeLeftCard(row: row, rowHeight: rowHeight)
-                    makeRightCard(row: row, rowHeight: rowHeight)
+                    GridRow {
+                        makeLeftCard(row: row, rowHeight: rowHeight)
+                        makeRightCard(row: row, rowHeight: rowHeight)
+                    }
                 }
             }
             .padding(.horizontal, model.horizontalPadding)
@@ -74,9 +71,7 @@ struct GameView: View {
             .accessibilityAddTraits(isSelected ? .isSelected : [])
             .accessibilityHint(Text("Left"))
         } else {
-            placeholderCard()
-                .frame(height: rowHeight)
-                .accessibilityHidden(true)
+            placeholder(rowHeight: rowHeight)
         }
     }
     
@@ -109,15 +104,14 @@ struct GameView: View {
             .accessibilityAddTraits(isSelected ? .isSelected : [])
             .accessibilityHint(Text("Right"))
         } else {
-            placeholderCard()
-                .frame(height: rowHeight)
-                .accessibilityHidden(true)
+            placeholder(rowHeight: rowHeight)
         }
     }
     
     // MARK: - Placeholder
-    
-    private func placeholderCard() -> some View {
+
+    @ViewBuilder
+    private func placeholder(rowHeight: CGFloat) -> some View {
         Rectangle()
             .fill(Color.blue.opacity(0.08))
             .overlay(
@@ -126,6 +120,8 @@ struct GameView: View {
             )
             .cornerRadius(12)
             .allowsHitTesting(false)
+            .frame(height: rowHeight)
+            .accessibilityHidden(true)
     }
 }
 
