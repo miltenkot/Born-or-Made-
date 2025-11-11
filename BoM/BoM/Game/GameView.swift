@@ -55,7 +55,8 @@ struct GameView: View {
             CardView(
                 title: title,
                 isSelected: isSelected,
-                selectionColor: model.selectionColor(isSelected: isSelected)
+                selectionColor: model.selectionColor(isSelected: isSelected),
+                selectionBackgroundColor: model.selectionBackgroundColor(isSelected: isSelected)
             )
             .frame(height: rowHeight)
             .contentShape(Rectangle())
@@ -83,7 +84,8 @@ struct GameView: View {
             CardView(
                 title: title,
                 isSelected: isSelected,
-                selectionColor: model.selectionColor(isSelected: isSelected)
+                selectionColor: model.selectionColor(isSelected: isSelected),
+                selectionBackgroundColor: model.selectionBackgroundColor(isSelected: isSelected)
             )
             .frame(height: rowHeight)
             .contentShape(Rectangle())

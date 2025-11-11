@@ -11,10 +11,11 @@ struct CardView: View {
     let title: String
     var isSelected: Bool = false
     var selectionColor: Color = .blue
+    var selectionBackgroundColor: Color = Color.blue.opacity(0.2)
     
     var body: some View {
         Rectangle()
-            .fill(Color.blue.opacity(0.2))
+            .fill(selectionBackgroundColor)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(isSelected ? selectionColor : Color.blue, lineWidth: isSelected ? 4 : 2)
@@ -35,7 +36,9 @@ struct CardView: View {
     VStack(spacing: 16) {
         CardView(title: "Not selected")
             .frame(height: 80)
-        CardView(title: "Selected", isSelected: true)
+        CardView(title: "Selected non-matching", isSelected: true, selectionBackgroundColor: Color.blue.opacity(0.15))
+            .frame(height: 80)
+        CardView(title: "Selected matching", isSelected: true, selectionColor: .green, selectionBackgroundColor: Color.green.opacity(0.25))
             .frame(height: 80)
     }
     .padding()

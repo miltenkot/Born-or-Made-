@@ -105,6 +105,14 @@ final class GameViewModel {
         (isSelected && isCurrentSelectionMatching) ? .green : .blue
     }
     
+    // New: background color for selected state
+    func selectionBackgroundColor(isSelected: Bool) -> Color {
+        guard isSelected else { return Color.blue.opacity(0.2) }
+        return isCurrentSelectionMatching
+            ? Color.green.opacity(0.25)
+            : Color.blue.opacity(0.15)
+    }
+    
     func toggleLeftSelection(_ row: Int) {
         selectedLeftIndex = (selectedLeftIndex == row) ? nil : row
     }
