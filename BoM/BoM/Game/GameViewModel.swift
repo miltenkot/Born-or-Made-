@@ -8,6 +8,7 @@
 import SwiftUI
 import Observation
 
+@MainActor
 @Observable
 final class GameViewModel {
     // Layout configuration
@@ -67,11 +68,6 @@ final class GameViewModel {
         roundItems = Array(qaItems.shuffled().prefix(rowsCount))
         rightItems = roundItems.shuffled()
         selectedLeftIndex = nil
-        selectedRightIndex = nil
-    }
-    
-    func shuffleRight() {
-        rightItems = roundItems.shuffled()
         selectedRightIndex = nil
     }
     

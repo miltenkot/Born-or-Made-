@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Observation
 
 struct GameView: View {
     @State private var model = GameViewModel()
@@ -44,13 +43,6 @@ struct GameView: View {
         }
         .ignoresSafeArea(.keyboard)
         .background(Color(.systemBackground))
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Shuffle") {
-                    model.shuffleRight()
-                }
-            }
-        }
     }
     
     // MARK: - Card builders
