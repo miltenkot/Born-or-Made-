@@ -53,11 +53,12 @@ struct GameView: View {
             let title = item.question
             let isSelected = model.isLeftSelected(row)
             let isFrozen = model.isLeftFrozen(row)
+            let isMismatch = model.isLeftMismatch(row)
             CardView(
                 title: title,
                 isSelected: isSelected,
-                selectionColor: model.selectionColor(isSelected: isSelected),
-                selectionBackgroundColor: model.selectionBackgroundColor(isSelected: isSelected)
+                selectionColor: model.selectionColor(isSelected: isSelected, isMismatch: isMismatch),
+                selectionBackgroundColor: model.selectionBackgroundColor(isSelected: isSelected, isMismatch: isMismatch)
             )
             .frame(height: rowHeight)
             .opacity(isFrozen ? 0.6 : 1.0)
@@ -87,11 +88,12 @@ struct GameView: View {
             let title = item.answer
             let isSelected = model.isRightSelected(row)
             let isFrozen = model.isRightFrozen(row)
+            let isMismatch = model.isRightMismatch(row)
             CardView(
                 title: title,
                 isSelected: isSelected,
-                selectionColor: model.selectionColor(isSelected: isSelected),
-                selectionBackgroundColor: model.selectionBackgroundColor(isSelected: isSelected)
+                selectionColor: model.selectionColor(isSelected: isSelected, isMismatch: isMismatch),
+                selectionBackgroundColor: model.selectionBackgroundColor(isSelected: isSelected, isMismatch: isMismatch)
             )
             .frame(height: rowHeight)
             .opacity(isFrozen ? 0.6 : 1.0)
@@ -135,4 +137,3 @@ struct GameView: View {
 #Preview {
     GameView()
 }
-

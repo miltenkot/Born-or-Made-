@@ -53,9 +53,13 @@ final class GameViewModel {
     var selectedLeftIndex: Int? = nil
     var selectedRightIndex: Int? = nil
     
-    // Newly added: frozen indices to disable taps temporarily
+    // Frozen indices to disable taps temporarily (match animation lub kara za błąd)
     private(set) var frozenLeft: Set<Int> = []
     private(set) var frozenRight: Set<Int> = []
+    
+    // Indices to highlight mismatch with red border
+    private(set) var mismatchLeftIndex: Int? = nil
+    private(set) var mismatchRightIndex: Int? = nil
     
     // Computed properties
     var rowsCount: Int { min(qaItems.count, maxVisibleRows) }
@@ -89,6 +93,8 @@ final class GameViewModel {
         selectedRightIndex = nil
         frozenLeft.removeAll()
         frozenRight.removeAll()
+        mismatchLeftIndex = nil
+        mismatchRightIndex = nil
     }
     
     func isLeftSelected(_ row: Int) -> Bool {
@@ -107,11 +113,24 @@ final class GameViewModel {
         frozenRight.contains(row)
     }
     
-    func selectionColor(isSelected: Bool) -> Color {
-        (isSelected && isCurrentSelectionMatching) ? .green : .blue
+    // Whether a given row should show mismatch (red) state
+    func isLeftMismatch(_ row: Int) -> Bool {
+        mismatchLeftIndex == row
     }
     
-    func selectionBackgroundColor(isSelected: Bool) -> Color {
+    func isRightMismatch(_ row: Int) -> Bool {
+        mismatchRightIndex == row
+    }
+    
+    func selectionColor(isSelected: Bool, isMismatch: Bool = false) -> Color {
+        // Jeśli to mismatch, kolor obramowania ma być czerwony niezależnie od selekcji
+        if isMismatch { return .red }
+        return (isSelected && isCurrentSelectionMatching) ? .green : .blue
+    }
+    
+    func selectionBackgroundColor(isSelected: Bool, isMismatch: Bool = false) -> Color {
+        // Jeśli mismatch, pokaż czerwone tło-aurę
+        if isMismatch { return Color.red.opacity(0.15) }
         guard isSelected else { return Color.blue.opacity(0.2) }
         return isCurrentSelectionMatching
             ? Color.green.opacity(0.25)
@@ -139,12 +158,27 @@ final class GameViewModel {
             let rightItem = rightItems[ri]
         else { return }
         
-        // Check match by identity
+        // Nietrafione dopasowanie: pokaż czerwone obramowanie i zamróź tylko te dwa pola na 2 sekundy
         guard leftItem.id == rightItem.id else {
+            // Zaznacz błąd i zamroź te dwa sloty
+            mismatchLeftIndex = li
+            mismatchRightIndex = ri
+            frozenLeft.insert(li)
+            frozenRight.insert(ri)
+            // Natychmiast wyczyść selekcje - bordery i tak będą widoczne dzięki mismatch*
+            selectedLeftIndex = nil
+            selectedRightIndex = nil
+            // odczekaj 2 sekundy
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            // odblokuj i wyczyść stany błędu
+            frozenLeft.remove(li)
+            frozenRight.remove(ri)
+            mismatchLeftIndex = nil
+            mismatchRightIndex = nil
             return
         }
         
-        // Freeze both cells to disable interactions
+        // Trafione dopasowanie: klasyczna animacja i uzupełnianie
         frozenLeft.insert(li)
         frozenRight.insert(ri)
         
@@ -217,4 +251,3 @@ final class GameViewModel {
         rightItems = newRight
     }
 }
-
